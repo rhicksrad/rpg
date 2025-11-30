@@ -9,12 +9,28 @@ import {
   EntityWithComponent
 } from './entities';
 import { moveEntityWithCollision } from './movement';
+import { createInventory, Inventory } from './inventory';
+import { SecondaryStats, StatBlock, createDefaultStats, deriveSecondaryStats } from './stats';
 
 export type HeroState = {
   entity: Entity;
   frameTimer: number;
   speedTilesPerSecond: number;
   speedPixelsPerSecond?: number;
+  isAlive: boolean;
+  inventory: Inventory;
+  stats: StatBlock;
+  secondary: SecondaryStats;
+  attackTimerMs: number;
+  attackCooldownMs: number;
+  attackActiveMs: number;
+  attackWindupMs: number;
+  attackQueued: boolean;
+  xp: number;
+  level: number;
+  statusEffects: string[];
+  respawnPoint: { x: number; y: number };
+  hurtCooldownMs?: number;
 };
 
 const FRAME_DURATION_MS = 150;
@@ -24,6 +40,8 @@ export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
   const tileY = Math.floor(map.length / 2);
   const position = createPosition(tileX, tileY);
   const sprite = createSprite(heroSheet, 0, 1);
+  const stats = createDefaultStats();
+  const secondary = deriveSecondaryStats(stats);
 
   const heroEntity = createEntity({
     kind: 'player',
@@ -31,7 +49,7 @@ export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
     sprite,
     components: {
       collidable: { solid: true },
-      health: { current: 5, max: 5 },
+      health: { current: secondary.maxHp, max: secondary.maxHp, isAlive: true },
       interactable: { prompt: 'Hero' }
     }
   });
@@ -39,7 +57,21 @@ export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
   return {
     entity: heroEntity,
     frameTimer: 0,
-    speedTilesPerSecond: 7.5
+    speedTilesPerSecond: 7.5,
+    isAlive: true,
+    inventory: createInventory(),
+    stats,
+    secondary,
+    attackTimerMs: 0,
+    attackCooldownMs: 450,
+    attackActiveMs: 150,
+    attackWindupMs: 120,
+    attackQueued: false,
+    xp: 0,
+    level: 1,
+    statusEffects: [],
+    respawnPoint: { x: tileX, y: tileY },
+    hurtCooldownMs: 0
   };
 }
 
@@ -50,6 +82,7 @@ export function updateHero(
   map: number[][],
   collidables: EntityWithComponent<'collidable'>[]
 ): void {
+  if (!hero.isAlive) return;
   const deltaSeconds = deltaMs / 1000;
   let dx = 0;
   let dy = 0;
@@ -156,6 +189,32 @@ export function drawHero(
 
 export function getHeroPixelPosition(hero: HeroState): { x: number; y: number } {
   return getEntityPixelPosition(hero.entity);
+}
+
+export function respawnHero(hero: HeroState): void {
+  hero.isAlive = true;
+  hero.entity.components.health = hero.entity.components.health ?? { current: hero.secondary.maxHp, max: hero.secondary.maxHp };
+  hero.entity.components.health.current = hero.secondary.maxHp;
+  hero.entity.components.health.max = hero.secondary.maxHp;
+  hero.entity.position.tileX = hero.respawnPoint.x;
+  hero.entity.position.tileY = hero.respawnPoint.y;
+  hero.entity.position.offsetX = 0;
+  hero.entity.position.offsetY = 0;
+}
+
+export function gainExperience(hero: HeroState, amount: number): void {
+  hero.xp += amount;
+  const requiredForLevel = Math.round(50 * hero.level * 1.25);
+  if (hero.xp >= requiredForLevel) {
+    hero.level += 1;
+    hero.xp -= requiredForLevel;
+    hero.stats.vit += 1;
+    hero.stats.str += 1;
+    hero.secondary = deriveSecondaryStats(hero.stats, hero.secondary);
+    hero.entity.components.health = hero.entity.components.health ?? { current: hero.secondary.maxHp, max: hero.secondary.maxHp };
+    hero.entity.components.health.max = hero.secondary.maxHp;
+    hero.entity.components.health.current = hero.secondary.maxHp;
+  }
 }
 
 export function getTileInFront(hero: HeroState): { tileX: number; tileY: number } {

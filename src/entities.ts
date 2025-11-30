@@ -22,6 +22,17 @@ export type CollidableComponent = {
 export type HealthComponent = {
   current: number;
   max: number;
+  isAlive?: boolean;
+  armor?: number;
+};
+
+export type StatusEffect = {
+  id: string;
+  durationMs: number;
+  stacks: number;
+  tickIntervalMs?: number;
+  elapsedMs?: number;
+  onTick?: (entity: Entity) => void;
 };
 
 export type AIComponent = {
@@ -41,6 +52,7 @@ export type Entity = {
   kind: EntityKind;
   position: PositionComponent;
   sprite: SpriteComponent;
+  metadata?: Record<string, unknown>;
   components: {
     collidable?: CollidableComponent;
     health?: HealthComponent;
@@ -75,19 +87,22 @@ export function createSprite(
 }
 
 export function createEntity(options: {
+  id?: string;
   kind: EntityKind;
   position: PositionComponent;
   sprite: SpriteComponent;
   components?: Partial<Entity['components']>;
   tags?: string[];
+  metadata?: Record<string, unknown>;
 }): Entity {
   return {
-    id: `entity-${nextEntityId++}`,
+    id: options.id ?? `entity-${nextEntityId++}`,
     kind: options.kind,
     position: options.position,
     sprite: options.sprite,
     components: options.components ?? {},
-    tags: options.tags
+    tags: options.tags,
+    metadata: options.metadata
   };
 }
 
