@@ -121,3 +121,5 @@ Each agent owns a slice of the game and avoids stepping on the others’ toes.
 - Centralize rules in one place (systems modules + data) and reuse them.
 - When you add a new subsystem (e.g., quests, dialogue), add a short section here
   describing which agent owns it and which files are involved.
+- Keep entrypoints (like `src/main.ts`) lean: prefer extracting new helpers/modules
+  instead of growing a single "main" file.
