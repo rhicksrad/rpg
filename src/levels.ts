@@ -230,6 +230,14 @@ function createGrasslandLevel(): LevelData {
       tags: ['scout']
     },
     {
+      kind: 'npc',
+      tileX: midCol,
+      tileY: midRow - 3,
+      facing: 0,
+      spriteIndex: 12,
+      tags: ['quest-giver', 'old-man']
+    },
+    {
       kind: 'enemy',
       tileX: 14,
       tileY: midRow + 4,
