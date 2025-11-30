@@ -16,18 +16,30 @@ export type LevelData = {
 
 const GRASS_TILES = {
   grassLight: 0,
-  grassMid: 1,
-  grassDark: 3,
-  flower: 2,
-  path: 9,
-  accent: 24,
-  wall: 18,
-  water: 22,
-  pit: 27,
-  orchard: 29,
-  crops: 26,
-  tree: 11,
-  shrub: 28
+  grassDark: 1,
+  sand: 2,
+  sandGrass: 3,
+  dirt: 4,
+  water: 5,
+  borderedGrass: 6,
+  sandGrassAlt: 7,
+  path: 8,
+  dirtGrass: 9,
+  bush: 10,
+  bushAlt: 11,
+  tree: 12,
+  pathAlt: 13,
+  sandGrassBlend: 14,
+  rock: 15,
+  rockAlt: 16,
+  rockCluster: 17,
+  rockWide: 18,
+  rockTall: 19,
+  treeAlt: 20,
+  treeDense: 21,
+  fence: 22,
+  shrub: 23,
+  chest: 24
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -88,11 +100,23 @@ function scatterDecor(map: number[][]): void {
       const checksum = (row * 3 + col * 7) % 97;
 
       if (checksum === 0) {
-        map[row][col] = GRASS_TILES.flower;
-      } else if (checksum === 7 || checksum === 19) {
-        map[row][col] = GRASS_TILES.accent;
+        map[row][col] = GRASS_TILES.bush;
+      } else if (checksum === 5) {
+        map[row][col] = GRASS_TILES.bushAlt;
+      } else if (checksum === 7) {
+        map[row][col] = GRASS_TILES.rock;
+      } else if (checksum === 11) {
+        map[row][col] = GRASS_TILES.rockAlt;
+      } else if (checksum === 19) {
+        map[row][col] = GRASS_TILES.rockCluster;
       } else if (checksum === 37) {
         map[row][col] = GRASS_TILES.shrub;
+      } else if (checksum === 53) {
+        map[row][col] = GRASS_TILES.chest;
+      } else if (checksum === 67) {
+        map[row][col] = GRASS_TILES.rockWide;
+      } else if (checksum === 83) {
+        map[row][col] = GRASS_TILES.rockTall;
       }
     }
   }
@@ -107,7 +131,9 @@ function addGroves(map: number[][], centers: { x: number; y: number; radius: num
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist <= radius && (dx * 13 + dy * 7) % 5 !== 0) {
-          map[row][col] = dist < radius - 1 ? GRASS_TILES.tree : GRASS_TILES.shrub;
+          const treeVariants = [GRASS_TILES.tree, GRASS_TILES.treeAlt, GRASS_TILES.treeDense];
+          const treeTile = treeVariants[(Math.abs(dx + dy) + radius) % treeVariants.length];
+          map[row][col] = dist < radius - 1 ? treeTile : GRASS_TILES.shrub;
         }
       }
     }
@@ -130,6 +156,14 @@ function carveRiver(map: number[][]): { start: number; end: number }[] {
       map[row][col] = GRASS_TILES.water;
     }
 
+    if (start - 1 > 0) {
+      map[row][start - 1] = seededChoice(row, start - 1, [GRASS_TILES.sand, GRASS_TILES.sandGrass]);
+    }
+
+    if (end + 1 < cols - 1) {
+      map[row][end + 1] = seededChoice(row, end + 1, [GRASS_TILES.sandGrassAlt, GRASS_TILES.sandGrassBlend]);
+    }
+
     spans[row] = { start, end };
 
     if (row % 6 === 0) {
@@ -150,7 +184,8 @@ function addBridges(map: number[][], riverSpans: { start: number; end: number }[
     if (!span) return;
 
     for (let col = span.start; col <= span.end; col += 1) {
-      map[bridgeRow][col] = GRASS_TILES.path;
+      const bridgeTiles = [GRASS_TILES.path, GRASS_TILES.pathAlt];
+      map[bridgeRow][col] = bridgeTiles[col % bridgeTiles.length];
     }
   });
 }
@@ -176,25 +211,25 @@ function placeTown(
   { addFieldsBelow = true }: { addFieldsBelow?: boolean } = {}
 ): void {
   fillRect(map, originX, originY, width, height, GRASS_TILES.path);
-  fillRect(map, originX + 1, originY + 1, width - 2, height - 2, GRASS_TILES.accent);
+  fillRect(map, originX + 1, originY + 1, width - 2, height - 2, GRASS_TILES.pathAlt);
 
   // Houses
-  fillRect(map, originX + 1, originY + 1, 3, 2, GRASS_TILES.wall);
-  fillRect(map, originX + width - 4, originY + height - 3, 3, 2, GRASS_TILES.wall);
-  fillRect(map, originX + Math.floor(width / 2) - 1, originY + 1, 3, 2, GRASS_TILES.wall);
+  fillRect(map, originX + 1, originY + 1, 3, 2, GRASS_TILES.fence);
+  fillRect(map, originX + width - 4, originY + height - 3, 3, 2, GRASS_TILES.fence);
+  fillRect(map, originX + Math.floor(width / 2) - 1, originY + 1, 3, 2, GRASS_TILES.fence);
 
   // Centerpiece
   map[originY + Math.floor(height / 2)][originX + Math.floor(width / 2)] = GRASS_TILES.tree;
 
   if (addFieldsBelow) {
-    fillRect(map, originX - 1, originY + height, width + 2, 4, GRASS_TILES.crops);
-    fillRect(map, originX + width + 1, originY + height - 1, 4, 3, GRASS_TILES.orchard);
+    fillRect(map, originX - 1, originY + height, width + 2, 4, GRASS_TILES.dirt);
+    fillRect(map, originX + width + 1, originY + height - 1, 4, 3, GRASS_TILES.dirtGrass);
   }
 }
 
 function addFields(map: number[][], startX: number, startY: number, width: number, height: number): void {
   for (let row = 0; row < height; row += 1) {
-    const tile = row % 2 === 0 ? GRASS_TILES.crops : GRASS_TILES.orchard;
+    const tile = row % 2 === 0 ? GRASS_TILES.dirt : GRASS_TILES.dirtGrass;
     drawHorizontalPath(map, startY + row, startX, startX + width - 1, tile);
   }
 }
@@ -208,10 +243,18 @@ function addLakes(map: number[][]): void {
 function createGrasslandLevel(): LevelData {
   const width = 64;
   const height = 48;
-  const map = createGrid(width, height, [GRASS_TILES.grassLight, GRASS_TILES.grassMid, GRASS_TILES.grassDark]);
+  const baseTiles = [
+    GRASS_TILES.grassLight,
+    GRASS_TILES.grassDark,
+    GRASS_TILES.borderedGrass,
+    GRASS_TILES.sandGrass,
+    GRASS_TILES.sandGrassAlt,
+    GRASS_TILES.sandGrassBlend
+  ];
+  const map = createGrid(width, height, baseTiles);
 
   scatterDecor(map);
-  addBorder(map, GRASS_TILES.wall);
+  addBorder(map, GRASS_TILES.fence);
 
   const riverSpans = carveRiver(map);
   addBridges(map, riverSpans, [12, 28, 40]);
