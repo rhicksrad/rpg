@@ -11,6 +11,7 @@ export type SpriteSheet = {
 export type Assets = {
   hero: SpriteSheet;
   enemies: SpriteSheet;
+  items: SpriteSheet;
   terrain: {
     grass: SpriteSheet;
     castle: SpriteSheet;
@@ -50,6 +51,13 @@ export async function loadAssets(): Promise<Assets> {
     },
     enemies: {
       image: enemyImage,
+      tileWidth: 64,
+      tileHeight: 64,
+      columns: 16,
+      rows: 16
+    },
+    items: {
+      image: heroImage,
       tileWidth: 64,
       tileHeight: 64,
       columns: 16,

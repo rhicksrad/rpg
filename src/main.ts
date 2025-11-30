@@ -2,13 +2,17 @@ import './style.css';
 import { Assets, TILE_SIZE, loadAssets } from './assets';
 import { initializeCanvas, resizeCanvasToViewport } from './canvas';
 import { ControlState, setupControls } from './controls';
-import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } from './hero';
-import { EntityRegistry, createEntityRegistry } from './entities';
+import { HeroState, createHero, drawHero, getHeroPixelPosition, respawnHero, updateHero } from './hero';
+import { Entity, EntityRegistry, createEntityRegistry } from './entities';
 import { InteractTarget, getInteractionTarget, interact } from './interactions';
 import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
 import { Camera, drawTileMap } from './renderTiles';
 import { createLevelLoader, levelTilesToGrid } from './levelLoader';
 import { AgentState, createAgent, drawAgents, updateAgents } from './agents';
+import { createItemEntity, ItemSpawn, pickupNearbyItems } from './items';
+import { createHud, updateHud } from './hud';
+import { queueHeroAttack, updateCombat } from './combat';
+import { createGameState, toggleInventory, togglePause } from './gameState';
 
 const { canvas, ctx } = initializeCanvas('game-canvas');
 const controls: ControlState = setupControls();
@@ -19,8 +23,15 @@ async function start() {
   let map = levelTilesToGrid(currentLevel);
   let hero = createHero(map, assets.hero);
   let agents: AgentState[] = createLevelAgents(currentLevel, assets);
-  let entityRegistry: EntityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity)]);
+  let itemEntities: Entity[] = createLevelItems(currentLevel, assets);
+  let entityRegistry: EntityRegistry = createEntityRegistry([
+    hero.entity,
+    ...agents.map((agent) => agent.entity),
+    ...itemEntities
+  ]);
   let activeTerrain = assets.terrain[currentLevel.terrain];
+  const gameState = createGameState();
+  const hud = createHud();
   const camera: Camera = {
     x: 0,
     y: 0,
@@ -47,6 +58,10 @@ async function start() {
     app.appendChild(loaderContainer);
   }
 
+  if (app) {
+    app.appendChild(hud.container);
+  }
+
   loaderSelect.value = currentLevel.id;
 
   function loadLevel(levelId: string) {
@@ -55,7 +70,8 @@ async function start() {
     map = levelTilesToGrid(currentLevel);
     hero = createHero(map, assets.hero);
     agents = createLevelAgents(currentLevel, assets);
-    entityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity)]);
+    itemEntities = createLevelItems(currentLevel, assets);
+    entityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity), ...itemEntities]);
     activeTerrain = assets.terrain[currentLevel.terrain];
     camera.x = 0;
     camera.y = 0;
@@ -70,21 +86,65 @@ async function start() {
   let lastTime = performance.now();
 
   function update(deltaMs: number) {
-    const collidables = entityRegistry.withComponent('collidable');
+    if (controls.consumePauseToggle()) togglePause(gameState);
+    if (controls.consumeInventoryToggle()) toggleInventory(gameState);
+
+    if (controls.consumeAttackRequest() && gameState.mode === 'playing') {
+      queueHeroAttack(hero);
+    }
 
     if (controls.consumeInteractRequest() || controls.pollGamepadInteract()) {
       const target: InteractTarget | null = getInteractionTarget(hero, map, entityRegistry);
       interact(target, hero);
     }
 
+    if (gameState.mode !== 'playing' && gameState.mode !== 'inventory') {
+      updateHud(hud, hero);
+      return;
+    }
+
+    const collidables = entityRegistry.withComponent('collidable');
+
     updateHero(hero, controls.keys, deltaMs, map, collidables);
     updateAgents(agents, deltaMs, map, collidables);
+    updateCombat(hero, agents, entityRegistry, deltaMs);
+    agents = agents.filter((agent) => agent.isAlive);
+
+    if (hero.hurtCooldownMs && hero.hurtCooldownMs > 0) {
+      hero.hurtCooldownMs = Math.max(hero.hurtCooldownMs - deltaMs, 0);
+    }
+    agents.forEach((agent) => {
+      if (agent.entity.kind !== 'enemy' || !agent.isAlive) return;
+      const dx = agent.entity.position.tileX - hero.entity.position.tileX;
+      const dy = agent.entity.position.tileY - hero.entity.position.tileY;
+      const distance = Math.hypot(dx, dy);
+      if (distance < 0.8 && (!hero.hurtCooldownMs || hero.hurtCooldownMs <= 0)) {
+        const health = hero.entity.components.health;
+        if (health) {
+          health.current = Math.max(0, health.current - 2);
+          hero.isAlive = health.current > 0;
+          hero.hurtCooldownMs = 600;
+          if (!hero.isAlive) {
+            respawnHero(hero);
+          }
+        }
+      }
+    });
+
+    const remainingItems = pickupNearbyItems(hero, itemEntities);
+    itemEntities
+      .filter((entity) => !remainingItems.includes(entity))
+      .forEach((entity) => entityRegistry.remove(entity.id));
+    itemEntities = remainingItems;
+
     updateCamera(camera, hero, map);
+    updateHud(hud, hero);
   }
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawTileMap(ctx, activeTerrain, map, camera);
+    drawItems(ctx, assets.items, itemEntities, camera);
     drawAgents(ctx, assets.enemies, agents, camera);
     drawHero(ctx, assets.hero, hero, camera);
   }
@@ -119,6 +179,26 @@ start().catch((err) => {
 function createLevelAgents(level: LevelData, assets: Assets): AgentState[] {
   const spawns = level.spawns ?? [];
   return spawns.map((spawn) => createAgent(spawn, assets.enemies));
+}
+
+function createLevelItems(level: LevelData, assets: Assets): Entity[] {
+  const spawns: ItemSpawn[] = level.items ?? [];
+  return spawns.map((spawn) => createItemEntity(spawn, assets.items));
+}
+
+function drawItems(
+  ctx: CanvasRenderingContext2D,
+  sheet: Assets['items'],
+  items: Entity[],
+  camera: { x: number; y: number }
+): void {
+  items.forEach((item) => {
+    const sx = item.sprite.frame * sheet.tileWidth;
+    const sy = item.sprite.direction * sheet.tileHeight;
+    const screenX = item.position.tileX * TILE_SIZE - camera.x;
+    const screenY = item.position.tileY * TILE_SIZE - camera.y;
+    ctx.drawImage(sheet.image, sx, sy, sheet.tileWidth, sheet.tileHeight, screenX, screenY, TILE_SIZE, TILE_SIZE);
+  });
 }
 
 function updateCamera(camera: Camera, hero: HeroState, map: number[][]): void {

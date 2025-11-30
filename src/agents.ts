@@ -23,6 +23,8 @@ export type AgentSpawn = {
   pauseDurationMs?: number;
   speedTilesPerSecond?: number;
   tags?: string[];
+  drops?: string[];
+  health?: number;
 };
 
 export type AgentState = {
@@ -34,6 +36,9 @@ export type AgentState = {
   pauseTimerMs: number;
   frameTimer: number;
   speedTilesPerSecond: number;
+  hitFlashMs: number;
+  isAlive: boolean;
+  drops?: string[];
 };
 
 const FRAME_DURATION_MS = 180;
@@ -49,6 +54,7 @@ export function createAgent(spawn: AgentSpawn, sheet: SpriteSheet): AgentState {
     sprite,
     components: {
       collidable: { solid: true },
+      health: spawn.kind === 'enemy' ? { current: spawn.health ?? 6, max: spawn.health ?? 6, isAlive: true } : undefined,
       ai: {
         behavior: behavior === 'patrol' ? 'wander' : 'idle',
         state: { waypoints: spawn.waypoints }
@@ -65,7 +71,10 @@ export function createAgent(spawn: AgentSpawn, sheet: SpriteSheet): AgentState {
     pauseDurationMs: spawn.pauseDurationMs ?? 650,
     pauseTimerMs: 0,
     frameTimer: 0,
-    speedTilesPerSecond: spawn.speedTilesPerSecond ?? 4
+    speedTilesPerSecond: spawn.speedTilesPerSecond ?? 4,
+    hitFlashMs: 0,
+    isAlive: true,
+    drops: spawn.drops
   };
 }
 
@@ -83,6 +92,10 @@ export function updateAgents(
   collidables: EntityWithComponent<'collidable'>[]
 ): void {
   agents.forEach((agent) => {
+    if (!agent.isAlive) return;
+    if (agent.hitFlashMs > 0) {
+      agent.hitFlashMs = Math.max(0, agent.hitFlashMs - deltaMs);
+    }
     if (agent.behavior === 'idle' || agent.waypoints.length < 2) {
       agent.entity.sprite.frame = 0;
       agent.frameTimer = 0;
@@ -144,6 +157,7 @@ export function drawAgents(
   camera: { x: number; y: number }
 ): void {
   agents.forEach((agent) => {
+    if (!agent.isAlive) return;
     const { x, y } = getEntityPixelPosition(agent.entity);
     const screenX = x - camera.x;
     const screenY = y - camera.y;
@@ -161,5 +175,13 @@ export function drawAgents(
       TILE_SIZE,
       TILE_SIZE
     );
+
+    if (agent.hitFlashMs > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.6 * (agent.hitFlashMs / 180);
+      ctx.fillStyle = '#ffaaaa';
+      ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+      ctx.restore();
+    }
   });
 }

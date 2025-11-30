@@ -1,4 +1,5 @@
 import { AgentSpawn } from './agents';
+import { ItemSpawn } from './items';
 
 export type LevelTerrain = 'grass' | 'castle';
 
@@ -12,6 +13,7 @@ export type LevelData = {
   tiles: number[];
   terrain: LevelTerrain;
   spawns?: AgentSpawn[];
+  items?: ItemSpawn[];
 };
 
 const GRASS_TILES = {
@@ -260,6 +262,12 @@ function createGrasslandLevel(): LevelData {
     }
   ];
 
+  const items: ItemSpawn[] = [
+    { itemId: 'coin', tileX: midCol, tileY: midRow },
+    { itemId: 'heart', tileX: midCol + 3, tileY: midRow + 2 },
+    { itemId: 'sword', tileX: midCol - 6, tileY: midRow - 4 }
+  ];
+
   return {
     id: 'level-1',
     levelName: 'Verdant Lowlands',
@@ -269,7 +277,8 @@ function createGrasslandLevel(): LevelData {
     height,
     terrain: 'grass',
     tiles: map.flat(),
-    spawns
+    spawns,
+    items
   };
 }
 
@@ -355,6 +364,10 @@ const castleLevel: LevelData = {
       speedTilesPerSecond: 3.25,
       tags: ['guard']
     }
+  ],
+  items: [
+    { itemId: 'potion', tileX: 6, tileY: 6 },
+    { itemId: 'boots', tileX: 16, tileY: 14 }
   ]
 };
 

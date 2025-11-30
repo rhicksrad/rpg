@@ -71,3 +71,56 @@ canvas {
 .level-loader select:hover {
   border-color: #f8e473;
 }
+
+.hud-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #f7f7f7;
+  text-shadow: 1px 1px 0 #000;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.hud-bars {
+  display: flex;
+  gap: 6px;
+}
+
+.hud-bar {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--value, 0%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.hud-bar.hp {
+  background: linear-gradient(90deg, rgba(164, 31, 52, 0.8), rgba(218, 67, 88, 0.8));
+}
+
+.hud-bar.xp {
+  background: linear-gradient(90deg, rgba(51, 87, 214, 0.8), rgba(78, 129, 255, 0.8));
+}
+
+.hud-inventory {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 6px 8px;
+}
