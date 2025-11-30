@@ -2,9 +2,11 @@ import { SpriteSheet, TILE_SIZE } from './assets';
 import {
   Direction,
   Entity,
+  EntityRegistry,
   createEntity,
   createPosition,
   createSprite,
+  drawEntity,
   getEntityPixelPosition,
   setEntityPixelPosition
 } from './entities';
@@ -47,7 +49,8 @@ export function updateHero(
   hero: HeroState,
   keys: Record<string, boolean>,
   deltaMs: number,
-  map: number[][]
+  map: number[][],
+  entities?: EntityRegistry
 ): void {
   const start = getHeroPixelPosition(hero);
   const deltaSeconds = deltaMs / 1000;
@@ -68,6 +71,9 @@ export function updateHero(
 
   const mapWidth = map[0].length * TILE_SIZE;
   const mapHeight = map.length * TILE_SIZE;
+  const collidableEntities = (entities?.withComponent('collidable') ?? []).filter(
+    (entity) => entity.id !== hero.entity.id
+  );
 
   const isCollidingWithMap = (x: number, y: number): boolean => {
     if (x < 0 || y < 0 || x + TILE_SIZE > mapWidth || y + TILE_SIZE > mapHeight) {
@@ -88,6 +94,18 @@ export function updateHero(
     }
 
     return false;
+  };
+
+  const isCollidingWithEntities = (x: number, y: number): boolean => {
+    return collidableEntities.some((entity) => {
+      const { x: entityX, y: entityY } = getEntityPixelPosition(entity);
+      return (
+        x < entityX + TILE_SIZE &&
+        x + TILE_SIZE > entityX &&
+        y < entityY + TILE_SIZE &&
+        y + TILE_SIZE > entityY
+      );
+    });
   };
 
   if (inputIsActive) {
@@ -112,12 +130,12 @@ export function updateHero(
     let currentY = start.y;
 
     const attemptedX = currentX + normalizedDx * stepPixels;
-    if (!isCollidingWithMap(attemptedX, currentY)) {
+    if (!isCollidingWithMap(attemptedX, currentY) && !isCollidingWithEntities(attemptedX, currentY)) {
       currentX = attemptedX;
     }
 
     const attemptedY = currentY + normalizedDy * stepPixels;
-    if (!isCollidingWithMap(currentX, attemptedY)) {
+    if (!isCollidingWithMap(currentX, attemptedY) && !isCollidingWithEntities(currentX, attemptedY)) {
       currentY = attemptedY;
     }
 
@@ -145,43 +163,10 @@ export function updateHero(
 
 export function drawHero(
   ctx: CanvasRenderingContext2D,
-  sheet: SpriteSheet,
   hero: HeroState,
   camera: { x: number; y: number }
 ): void {
-  const sx = hero.entity.sprite.frame * sheet.tileWidth;
-  const sy = hero.entity.sprite.direction * sheet.tileHeight;
-  const { x, y } = getHeroPixelPosition(hero);
-  const screenX = x - camera.x;
-  const screenY = y - camera.y;
-
-  ctx.save();
-  ctx.globalAlpha = 0.35;
-  ctx.fillStyle = '#000000';
-  ctx.beginPath();
-  ctx.ellipse(
-    screenX + TILE_SIZE / 2,
-    screenY + TILE_SIZE * 0.85,
-    TILE_SIZE * 0.38,
-    TILE_SIZE * 0.2,
-    0,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-  ctx.restore();
-
-  ctx.drawImage(
-    sheet.image,
-    sx,
-    sy,
-    sheet.tileWidth,
-    sheet.tileHeight,
-    screenX,
-    screenY,
-    TILE_SIZE,
-    TILE_SIZE
-  );
+  drawEntity(ctx, hero.entity, camera);
 }
 
 export function getHeroPixelPosition(hero: HeroState): { x: number; y: number } {

@@ -1,10 +1,18 @@
 import './style.css';
 import { Assets, TILE_SIZE, loadAssets } from './assets';
-import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } from './hero';
+import { HeroState, createHero, getHeroPixelPosition, updateHero } from './hero';
 import { Camera, drawTileMap } from './renderTiles';
 import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
 import { InteractTarget, getInteractionTarget, interact } from './interactions';
-import { EntityStore, createEntityStore } from './entities';
+import {
+  Entity,
+  EntityRegistry,
+  createEntity,
+  createEntityRegistry,
+  createPosition,
+  createSprite,
+  drawEntities
+} from './entities';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -93,7 +101,7 @@ async function start() {
   let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
   let map = levelTilesToGrid(currentLevel);
   let hero = createHero(map, assets.hero);
-  let entities: EntityStore = createEntityStore([hero.entity]);
+  let entities: EntityRegistry = createEntityRegistry([hero.entity]);
   let activeTerrain = assets.terrain[currentLevel.terrain];
   const camera: Camera = {
     x: 0,
@@ -123,17 +131,60 @@ async function start() {
 
   loaderSelect.value = currentLevel.id;
 
+  populateLevelEntities(map, entities, assets.hero);
+
   function loadLevel(levelId: string) {
     const nextLevel = LEVELS_BY_ID[levelId] ?? LEVELS_BY_ID[DEFAULT_LEVEL_ID];
     currentLevel = nextLevel;
     map = levelTilesToGrid(currentLevel);
     hero = createHero(map, assets.hero);
-    entities = createEntityStore([hero.entity]);
+    entities = createEntityRegistry([hero.entity]);
+    populateLevelEntities(map, entities, assets.hero);
     activeTerrain = assets.terrain[currentLevel.terrain];
     camera.x = 0;
     camera.y = 0;
     resizeCanvasToViewport(camera, map);
     loaderSelect.value = currentLevel.id;
+  }
+
+  function populateLevelEntities(
+    currentMap: number[][],
+    registry: EntityRegistry,
+    heroSheet: Assets['hero']
+  ): void {
+    const mapWidth = currentMap[0].length;
+    const mapHeight = currentMap.length;
+    const centerX = Math.floor(mapWidth / 2);
+    const centerY = Math.floor(mapHeight / 2);
+
+    const villagers: Array<{ x: number; y: number; prompt: string }> = [
+      { x: Math.max(1, centerX - 3), y: centerY, prompt: 'Lovely day for a walk.' },
+      {
+        x: Math.min(mapWidth - 2, centerX + 4),
+        y: Math.max(1, centerY + 2),
+        prompt: 'Press E near folks to chat.'
+      }
+    ];
+
+    villagers.forEach((villager, index) => {
+      const npc: Entity = createEntity({
+        kind: 'npc',
+        position: createPosition(villager.x, villager.y),
+        sprite: createSprite(heroSheet, 0, (index % 2) + 1),
+        components: {
+          collidable: { solid: true },
+          interactable: {
+            prompt: villager.prompt,
+            onInteract: (self, actor) => {
+              console.log(`${self.id} says to the ${actor.kind}: ${villager.prompt}`);
+            }
+          }
+        },
+        tags: ['villager']
+      });
+
+      registry.register(npc);
+    });
   }
 
   let lastTime = performance.now();
@@ -143,16 +194,16 @@ async function start() {
     lastTime = timestamp;
 
     if (consumeInteractRequest() || pollGamepadInteract()) {
-      const target: InteractTarget | null = getInteractionTarget(hero, map);
-      interact(target);
+      const target: InteractTarget | null = getInteractionTarget(hero, map, entities);
+      interact(target, hero.entity);
     }
 
-    updateHero(hero, keys, deltaMs, map);
+    updateHero(hero, keys, deltaMs, map, entities);
     updateCamera(camera, hero, map);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawTileMap(ctx, activeTerrain, map, camera);
-    drawHero(ctx, assets.hero, hero, camera);
+    drawEntities(ctx, entities.all(), camera);
 
     requestAnimationFrame(gameLoop);
   }
