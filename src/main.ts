@@ -1,7 +1,7 @@
 import './style.css';
 import { Assets, TILE_SIZE, loadAssets } from './assets';
-import { createHero, drawHero, updateHero } from './hero';
-import { drawTileMap } from './renderTiles';
+import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } from './hero';
+import { Camera, drawTileMap } from './renderTiles';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -31,8 +31,8 @@ window.addEventListener('keyup', (event) => {
 });
 
 function createMap(): number[][] {
-  const cols = Math.ceil(canvas.width / TILE_SIZE);
-  const rows = Math.ceil(canvas.height / TILE_SIZE);
+  const cols = Math.ceil(canvas.width / TILE_SIZE) * 3;
+  const rows = Math.ceil(canvas.height / TILE_SIZE) * 3;
   const centerCol = Math.floor(cols / 2);
   const centerRow = Math.floor(rows / 2);
 
@@ -71,6 +71,12 @@ async function start() {
   const assets: Assets = await loadAssets();
   const map = createMap();
   const hero = createHero(map);
+  const camera: Camera = {
+    x: 0,
+    y: 0,
+    width: canvas.width,
+    height: canvas.height
+  };
 
   let lastTime = performance.now();
 
@@ -79,10 +85,11 @@ async function start() {
     lastTime = timestamp;
 
     updateHero(hero, keys, deltaMs, map);
+    updateCamera(camera, hero, map);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawTileMap(ctx, assets.terrain.grass, map);
-    drawHero(ctx, assets.hero, hero);
+    drawTileMap(ctx, assets.terrain.grass, map, camera);
+    drawHero(ctx, assets.hero, hero, camera);
 
     requestAnimationFrame(gameLoop);
   }
@@ -93,3 +100,21 @@ async function start() {
 start().catch((err) => {
   console.error('Failed to start game', err);
 });
+
+function updateCamera(camera: Camera, hero: HeroState, map: number[][]): void {
+  const mapWidth = map[0].length * TILE_SIZE;
+  const mapHeight = map.length * TILE_SIZE;
+  const heroPos = getHeroPixelPosition(hero);
+  const heroCenterX = heroPos.x + TILE_SIZE / 2;
+  const heroCenterY = heroPos.y + TILE_SIZE / 2;
+
+  const maxCameraX = Math.max(mapWidth - camera.width, 0);
+  const maxCameraY = Math.max(mapHeight - camera.height, 0);
+
+  camera.x = clamp(heroCenterX - camera.width / 2, 0, maxCameraX);
+  camera.y = clamp(heroCenterY - camera.height / 2, 0, maxCameraY);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
