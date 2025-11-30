@@ -106,30 +106,13 @@ async function start() {
     const collidables = entityRegistry.withComponent('collidable');
 
     updateHero(hero, controls.keys, deltaMs, map, collidables);
-    updateAgents(agents, deltaMs, map, collidables);
+    updateAgents(agents, hero, deltaMs, map, collidables);
     updateCombat(hero, agents, entityRegistry, deltaMs);
     agents = agents.filter((agent) => agent.isAlive);
 
     if (hero.hurtCooldownMs && hero.hurtCooldownMs > 0) {
       hero.hurtCooldownMs = Math.max(hero.hurtCooldownMs - deltaMs, 0);
     }
-    agents.forEach((agent) => {
-      if (agent.entity.kind !== 'enemy' || !agent.isAlive) return;
-      const dx = agent.entity.position.tileX - hero.entity.position.tileX;
-      const dy = agent.entity.position.tileY - hero.entity.position.tileY;
-      const distance = Math.hypot(dx, dy);
-      if (distance < 0.8 && (!hero.hurtCooldownMs || hero.hurtCooldownMs <= 0)) {
-        const health = hero.entity.components.health;
-        if (health) {
-          health.current = Math.max(0, health.current - 2);
-          hero.isAlive = health.current > 0;
-          hero.hurtCooldownMs = 600;
-          if (!hero.isAlive) {
-            respawnHero(hero);
-          }
-        }
-      }
-    });
 
     const remainingItems = pickupNearbyItems(hero, itemEntities);
     itemEntities

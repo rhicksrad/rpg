@@ -36,7 +36,7 @@ function resolvePublicAsset(path: string): string {
 export async function loadAssets(): Promise<Assets> {
   const [heroImage, enemyImage, villageImage, castleImage] = await Promise.all([
     loadImage(resolvePublicAsset('hero_sprites_16x16.png')),
-    loadImage(resolvePublicAsset('enemies.png')),
+    loadImage(resolvePublicAsset('enemies_level1_5x5_16px.png')),
     loadImage(resolvePublicAsset('village_tiles_5x5_16px.png')),
     loadImage(resolvePublicAsset('castle.png'))
   ]);
@@ -51,10 +51,10 @@ export async function loadAssets(): Promise<Assets> {
     },
     enemies: {
       image: enemyImage,
-      tileWidth: 64,
-      tileHeight: 64,
-      columns: 16,
-      rows: 16
+      tileWidth: 16,
+      tileHeight: 16,
+      columns: 5,
+      rows: 5
     },
     items: {
       image: heroImage,
