@@ -50,6 +50,11 @@ export type Entity = {
   tags?: string[];
 };
 
+export type ComponentKey = keyof Entity['components'];
+export type EntityWithComponent<K extends ComponentKey> = Entity & {
+  components: Entity['components'] & Required<Pick<Entity['components'], K>>;
+};
+
 let nextEntityId = 1;
 
 export function createPosition(
@@ -103,16 +108,24 @@ export function setEntityPixelPosition(entity: Entity, x: number, y: number): vo
   entity.position.offsetY = y - tileY * TILE_SIZE;
 }
 
-export type EntityStore = {
+export type EntityRegistry = {
   add: (entity: Entity) => Entity;
   remove: (id: string) => boolean;
   get: (id: string) => Entity | undefined;
   all: () => Entity[];
-  findByKind: (kind: EntityKind) => Entity[];
+  ofKind: (kind: EntityKind) => Entity[];
+  withComponent: <K extends ComponentKey>(component: K) => EntityWithComponent<K>[];
+  withTags: (tags: string | string[]) => Entity[];
 };
 
-export function createEntityStore(initialEntities: Entity[] = []): EntityStore {
+export function createEntityRegistry(initialEntities: Entity[] = []): EntityRegistry {
   const entities = new Map(initialEntities.map((entity) => [entity.id, entity]));
+
+  const hasAllTags = (entity: Entity, tags: string[]): boolean => {
+    if (!tags.length) return true;
+    if (!entity.tags) return false;
+    return tags.every((tag) => entity.tags?.includes(tag));
+  };
 
   return {
     add: (entity: Entity) => {
@@ -122,6 +135,14 @@ export function createEntityStore(initialEntities: Entity[] = []): EntityStore {
     remove: (id: string) => entities.delete(id),
     get: (id: string) => entities.get(id),
     all: () => Array.from(entities.values()),
-    findByKind: (kind: EntityKind) => Array.from(entities.values()).filter((entity) => entity.kind === kind)
+    ofKind: (kind: EntityKind) => Array.from(entities.values()).filter((entity) => entity.kind === kind),
+    withComponent: (component) =>
+      Array.from(entities.values()).filter((entity): entity is EntityWithComponent<typeof component> =>
+        Boolean(entity.components[component])
+      ),
+    withTags: (tags) => {
+      const requiredTags = Array.isArray(tags) ? tags : [tags];
+      return Array.from(entities.values()).filter((entity) => hasAllTags(entity, requiredTags));
+    }
   };
 }
