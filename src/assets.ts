@@ -27,8 +27,8 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 
 function resolvePublicAsset(path: string): string {
   const base = import.meta.env.BASE_URL || '/';
-  const absoluteBase = new URL(base, window.location.origin);
-  return new URL(path, absoluteBase).toString();
+  const resolvedBase = new URL(base, window.location.href);
+  return new URL(path, resolvedBase).toString();
 }
 
 export async function loadAssets(): Promise<Assets> {
