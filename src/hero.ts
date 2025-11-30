@@ -133,6 +133,24 @@ export function drawHero(
   const sx = hero.frame * sheet.tileWidth;
   const sy = hero.direction * sheet.tileHeight;
   const { x, y } = getHeroPixelPosition(hero);
+  const screenX = x - camera.x;
+  const screenY = y - camera.y;
+
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.ellipse(
+    screenX + TILE_SIZE / 2,
+    screenY + TILE_SIZE * 0.85,
+    TILE_SIZE * 0.38,
+    TILE_SIZE * 0.2,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.restore();
 
   ctx.drawImage(
     sheet.image,
@@ -140,8 +158,8 @@ export function drawHero(
     sy,
     sheet.tileWidth,
     sheet.tileHeight,
-    x - camera.x,
-    y - camera.y,
+    screenX,
+    screenY,
     TILE_SIZE,
     TILE_SIZE
   );
