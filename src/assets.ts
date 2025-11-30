@@ -25,11 +25,15 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function resolvePublicAsset(path: string): string {
+  return new URL(path, import.meta.env.BASE_URL).toString();
+}
+
 export async function loadAssets(): Promise<Assets> {
   const [heroImage, grassImage, castleImage] = await Promise.all([
-    loadImage('/hero_sprites_16x16.png'),
-    loadImage('/grassy.png'),
-    loadImage('/castle.png')
+    loadImage(resolvePublicAsset('hero_sprites_16x16.png')),
+    loadImage(resolvePublicAsset('grassy.png')),
+    loadImage(resolvePublicAsset('castle.png'))
   ]);
 
   return {
