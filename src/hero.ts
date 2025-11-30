@@ -127,7 +127,8 @@ export function updateHero(
 export function drawHero(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet,
-  hero: HeroState
+  hero: HeroState,
+  camera: { x: number; y: number }
 ): void {
   const sx = hero.frame * sheet.tileWidth;
   const sy = hero.direction * sheet.tileHeight;
@@ -139,14 +140,14 @@ export function drawHero(
     sy,
     sheet.tileWidth,
     sheet.tileHeight,
-    x,
-    y,
+    x - camera.x,
+    y - camera.y,
     TILE_SIZE,
     TILE_SIZE
   );
 }
 
-function getHeroPixelPosition(hero: HeroState): { x: number; y: number } {
+export function getHeroPixelPosition(hero: HeroState): { x: number; y: number } {
   return {
     x: hero.tileX * TILE_SIZE + hero.offsetX,
     y: hero.tileY * TILE_SIZE + hero.offsetY

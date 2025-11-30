@@ -1,5 +1,12 @@
 import { SpriteSheet, TILE_SIZE } from './assets';
 
+export type Camera = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export function drawTile(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet,
@@ -28,12 +35,18 @@ export function drawTile(
 export function drawTileMap(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet,
-  map: number[][]
+  map: number[][],
+  camera: Camera
 ): void {
-  for (let row = 0; row < map.length; row += 1) {
-    for (let col = 0; col < map[row].length; col += 1) {
+  const startCol = Math.max(Math.floor(camera.x / TILE_SIZE), 0);
+  const endCol = Math.min(Math.ceil((camera.x + camera.width) / TILE_SIZE), map[0].length);
+  const startRow = Math.max(Math.floor(camera.y / TILE_SIZE), 0);
+  const endRow = Math.min(Math.ceil((camera.y + camera.height) / TILE_SIZE), map.length);
+
+  for (let row = startRow; row < endRow; row += 1) {
+    for (let col = startCol; col < endCol; col += 1) {
       const tileIndex = map[row][col];
-      drawTile(ctx, sheet, tileIndex, col * TILE_SIZE, row * TILE_SIZE);
+      drawTile(ctx, sheet, tileIndex, col * TILE_SIZE - camera.x, row * TILE_SIZE - camera.y);
     }
   }
 }
