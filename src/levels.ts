@@ -1,3 +1,5 @@
+import { AgentSpawn } from './agents';
+
 export type LevelTerrain = 'grass' | 'castle';
 
 export type LevelData = {
@@ -9,6 +11,7 @@ export type LevelData = {
   height: number;
   tiles: number[];
   terrain: LevelTerrain;
+  spawns?: AgentSpawn[];
 };
 
 const GRASS_TILES = {
@@ -196,6 +199,46 @@ function createGrasslandLevel(): LevelData {
 
   addLakes(map);
 
+  const spawns: AgentSpawn[] = [
+    {
+      kind: 'npc',
+      tileX: 22,
+      tileY: midRow,
+      facing: 1,
+      tags: ['villager']
+    },
+    {
+      kind: 'npc',
+      tileX: 34,
+      tileY: midRow,
+      facing: 2,
+      tags: ['scout']
+    },
+    {
+      kind: 'enemy',
+      tileX: 14,
+      tileY: midRow,
+      waypoints: [
+        { tileX: 14, tileY: midRow },
+        { tileX: width - 16, tileY: midRow }
+      ],
+      pauseDurationMs: 400,
+      speedTilesPerSecond: 3.5,
+      tags: ['slime']
+    },
+    {
+      kind: 'enemy',
+      tileX: Math.floor(width / 2),
+      tileY: 14,
+      waypoints: [
+        { tileX: Math.floor(width / 2), tileY: 14 },
+        { tileX: Math.floor(width / 2), tileY: height - 14 }
+      ],
+      pauseDurationMs: 520,
+      tags: ['bat']
+    }
+  ];
+
   return {
     id: 'level-1',
     levelName: 'Verdant Lowlands',
@@ -204,7 +247,8 @@ function createGrasslandLevel(): LevelData {
     width,
     height,
     terrain: 'grass',
-    tiles: map.flat()
+    tiles: map.flat(),
+    spawns
   };
 }
 
@@ -276,7 +320,21 @@ const castleLevel: LevelData = {
     borderTile: 30,
     waterTile: 20,
     pitTile: 23
-  })
+  }),
+  spawns: [
+    {
+      kind: 'enemy',
+      tileX: 8,
+      tileY: 11,
+      waypoints: [
+        { tileX: 8, tileY: 11 },
+        { tileX: 24, tileY: 11 }
+      ],
+      pauseDurationMs: 450,
+      speedTilesPerSecond: 3.25,
+      tags: ['guard']
+    }
+  ]
 };
 
 export const LEVELS: LevelData[] = [grassLevel, castleLevel];
