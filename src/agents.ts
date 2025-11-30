@@ -11,6 +11,7 @@ import {
 import { moveEntityWithCollision } from './movement';
 import { HeroState, respawnHero } from './hero';
 import { applyDamage } from './stats';
+import { getTileMetadata } from './tiles';
 
 export type Waypoint = { tileX: number; tileY: number };
 
@@ -28,6 +29,10 @@ export type AgentSpawn = {
   tags?: string[];
   drops?: string[];
   health?: number;
+  attackDamage?: number;
+  attackRangeTiles?: number;
+  detectionRangeTiles?: number;
+  attackCooldownMs?: number;
 };
 
 export type AgentState = {
@@ -58,13 +63,17 @@ const ENEMY_ATTACK_COOLDOWN_MS = 750;
 function mapEnemySpriteIndex(tags: string[] = [], fallback = 0): number {
   if (tags.includes('slime')) return 0;
   if (tags.includes('bat')) return 9;
-  if (tags.includes('guard') || tags.includes('skeleton')) return 10;
-  if (tags.includes('wolf')) return 11;
-  if (tags.includes('rat')) return 7;
+  if (tags.includes('guard') || tags.includes('skeleton') || tags.includes('foreman')) return 10;
+  if (tags.includes('wolf') || tags.includes('warden')) return 11;
+  if (tags.includes('rat') || tags.includes('mole')) return 7;
   if (tags.includes('spider')) return 8;
-  if (tags.includes('ghost')) return 4;
+  if (tags.includes('ghost') || tags.includes('wisp')) return 4;
   if (tags.includes('eye')) return 3;
-  if (tags.includes('goblin')) return 5;
+  if (tags.includes('goblin') || tags.includes('pickaxer')) return 5;
+  if (tags.includes('kelpie')) return 12;
+  if (tags.includes('broodmother')) return 15;
+  if (tags.includes('bog')) return 14;
+  if (tags.includes('leech')) return 13;
   return fallback;
 }
 
@@ -106,11 +115,11 @@ export function createAgent(spawn: AgentSpawn, sheet: SpriteSheet): AgentState {
     isAlive: true,
     drops: spawn.drops,
     spriteIndex,
-    attackCooldownMs: ENEMY_ATTACK_COOLDOWN_MS,
+    attackCooldownMs: spawn.attackCooldownMs ?? ENEMY_ATTACK_COOLDOWN_MS,
     attackTimerMs: 0,
-    detectionRangeTiles: ENEMY_CHASE_RANGE_TILES,
-    attackRangeTiles: ENEMY_ATTACK_RANGE_TILES,
-    attackDamage: ENEMY_ATTACK_DAMAGE
+    detectionRangeTiles: spawn.detectionRangeTiles ?? ENEMY_CHASE_RANGE_TILES,
+    attackRangeTiles: spawn.attackRangeTiles ?? ENEMY_ATTACK_RANGE_TILES,
+    attackDamage: spawn.attackDamage ?? ENEMY_ATTACK_DAMAGE
   };
 }
 
@@ -147,6 +156,21 @@ export function updateAgents(
     const distanceToHero = Math.hypot(dxHero, dyHero) / TILE_SIZE;
     const shouldChaseHero = isEnemy && distanceToHero <= agent.detectionRangeTiles;
 
+    const tileBelow = map[agent.entity.position.tileY]?.[agent.entity.position.tileX] ?? 0;
+    const tileMetadata = getTileMetadata(tileBelow);
+    const moveCost = tileMetadata.moveCost ?? 1;
+    const slowTag = tileMetadata.tags?.includes('slow') ? 0.8 : 1;
+    const speedMultiplier = (1 / moveCost) * slowTag;
+
+    if (tileMetadata.damagePerSecond && isEnemy) {
+      const enemyEntity = agent.entity as EntityWithComponent<'health'>;
+      applyDamage(enemyEntity, (tileMetadata.damagePerSecond * deltaMs) / 1000);
+      agent.isAlive = Boolean(enemyEntity.components.health.isAlive);
+      if (!agent.isAlive) {
+        return;
+      }
+    }
+
     if (!shouldChaseHero && (agent.behavior === 'idle' || agent.waypoints.length < 2)) {
       agent.entity.sprite.frame = 0;
       agent.frameTimer = 0;
@@ -176,7 +200,15 @@ export function updateAgents(
     const direction = pickDirection(dx, dy);
     agent.entity.sprite.direction = direction;
 
-    moveEntityWithCollision(agent.entity, dx, dy, agent.speedTilesPerSecond * TILE_SIZE, deltaMs, map, collidables);
+    moveEntityWithCollision(
+      agent.entity,
+      dx,
+      dy,
+      agent.speedTilesPerSecond * TILE_SIZE * speedMultiplier,
+      deltaMs,
+      map,
+      collidables
+    );
 
     if (shouldChaseHero && heroHealth?.isAlive && distanceToHero <= agent.attackRangeTiles) {
       if (agent.attackTimerMs <= 0 && (!hero.hurtCooldownMs || hero.hurtCooldownMs <= 0)) {

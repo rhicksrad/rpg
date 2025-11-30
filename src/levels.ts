@@ -3,6 +3,15 @@ import { ItemSpawn } from './items';
 
 export type LevelTerrain = 'grass' | 'castle';
 
+export type LevelHazard = {
+  id: string;
+  description: string;
+  intervalMs: number;
+  damage: number;
+  appliesTo?: 'hero' | 'enemies' | 'all';
+  safeTags?: string[];
+};
+
 export type LevelData = {
   id: string;
   levelName: string;
@@ -14,6 +23,7 @@ export type LevelData = {
   terrain: LevelTerrain;
   spawns?: AgentSpawn[];
   items?: ItemSpawn[];
+  hazards?: LevelHazard[];
 };
 
 const VILLAGE_TILES = {
@@ -274,7 +284,7 @@ function createGrasslandLevel(): LevelData {
     id: 'level-1',
     levelName: 'Verdant Lowlands',
     musicKey: 'overworld',
-    nextLevelId: 'level-2',
+    nextLevelId: 'echoing-depths',
     width,
     height,
     terrain: 'grass',
@@ -335,7 +345,339 @@ function generateTiles(
   return map.flat();
 }
 
+function createEchoingDepthsLevel(): LevelData {
+  const width = 38;
+  const height = 28;
+  const map: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 21));
+
+  fillRect(map, 0, 0, width, 1, 19);
+  fillRect(map, 0, height - 1, width, 1, 19);
+  fillRect(map, 0, 0, 1, height, 19);
+  fillRect(map, width - 1, 0, 1, height, 19);
+
+  fillRect(map, 4, 3, width - 8, height - 6, 14);
+  fillRect(map, 6, 6, 8, 6, 27); // cleansing pools
+  fillRect(map, width - 14, 8, 10, 5, 25); // cold water pockets
+  fillRect(map, 16, 14, 6, 4, 28); // echo pulse vents
+
+  for (let row = 8; row < height - 8; row += 4) {
+    for (let col = 10; col < width - 10; col += 6) {
+      map[row][col] = 18; // pillar cover
+    }
+  }
+
+  const spawns: AgentSpawn[] = [
+    {
+      kind: 'enemy',
+      tileX: 9,
+      tileY: 9,
+      waypoints: [
+        { tileX: 9, tileY: 9 },
+        { tileX: 14, tileY: 7 },
+        { tileX: 12, tileY: 12 }
+      ],
+      speedTilesPerSecond: 4.5,
+      tags: ['bat'],
+      drops: ['glow-crystal', 'coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: 20,
+      tileY: 10,
+      waypoints: [
+        { tileX: 20, tileY: 10 },
+        { tileX: 26, tileY: 9 },
+        { tileX: 24, tileY: 12 }
+      ],
+      tags: ['bat'],
+      speedTilesPerSecond: 4.5,
+      drops: ['coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: 14,
+      tileY: 18,
+      waypoints: [
+        { tileX: 14, tileY: 18 },
+        { tileX: 10, tileY: 20 },
+        { tileX: 18, tileY: 19 }
+      ],
+      tags: ['slime'],
+      health: 10,
+      drops: ['slime-gel']
+    },
+    {
+      kind: 'enemy',
+      tileX: 28,
+      tileY: 16,
+      waypoints: [
+        { tileX: 28, tileY: 16 },
+        { tileX: 30, tileY: 13 },
+        { tileX: 32, tileY: 18 }
+      ],
+      tags: ['rat'],
+      speedTilesPerSecond: 5,
+      drops: ['coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: 24,
+      tileY: 22,
+      tags: ['broodmother', 'boss', 'bat'],
+      health: 28,
+      attackDamage: 4,
+      attackRangeTiles: 1.2,
+      detectionRangeTiles: 8,
+      speedTilesPerSecond: 4,
+      drops: ['broodmother-lamp', 'coin-pouch']
+    }
+  ];
+
+  const items: ItemSpawn[] = [
+    { itemId: 'glow-crystal', tileX: 8, tileY: 7 },
+    { itemId: 'glow-crystal', tileX: 30, tileY: 9 },
+    { itemId: 'lantern-polish', tileX: 12, tileY: 21 }
+  ];
+
+  return {
+    id: 'echoing-depths',
+    levelName: 'Echoing Depths',
+    musicKey: 'dungeon',
+    nextLevelId: 'timber-tunnels',
+    width,
+    height,
+    terrain: 'castle',
+    tiles: map.flat(),
+    spawns,
+    items,
+    hazards: [
+      {
+        id: 'echo-pulse',
+        description: 'Echo pulses ring out, punishing anyone away from cover.',
+        intervalMs: 12000,
+        damage: 2,
+        appliesTo: 'all',
+        safeTags: ['cover']
+      }
+    ]
+  };
+}
+
+function createTimberTunnelsLevel(): LevelData {
+  const width = 44;
+  const height = 26;
+  const map: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 21));
+
+  fillRect(map, 0, 0, width, 1, 3);
+  fillRect(map, 0, height - 1, width, 1, 3);
+  fillRect(map, 0, 0, 1, height, 3);
+  fillRect(map, width - 1, 0, 1, height, 3);
+
+  fillRect(map, 4, 4, width - 8, 4, 14);
+  fillRect(map, 6, 10, width - 12, 3, 14);
+  fillRect(map, 8, 16, width - 16, 3, 14);
+  fillRect(map, 10, 7, 6, 4, 25); // water pockets
+  fillRect(map, width - 18, 12, 8, 4, 26); // cave-in pits
+
+  for (let col = 6; col < width - 6; col += 6) {
+    map[9][col] = 30;
+    map[15][col + 2] = 30;
+  }
+
+  map[12][6] = 31;
+  map[18][20] = 31;
+  map[6][width - 10] = 31;
+
+  const spawns: AgentSpawn[] = [
+    {
+      kind: 'enemy',
+      tileX: 12,
+      tileY: 5,
+      waypoints: [
+        { tileX: 12, tileY: 5 },
+        { tileX: 18, tileY: 5 },
+        { tileX: 18, tileY: 8 }
+      ],
+      tags: ['pickaxer'],
+      attackDamage: 3,
+      drops: ['timber-plank']
+    },
+    {
+      kind: 'enemy',
+      tileX: 22,
+      tileY: 11,
+      waypoints: [
+        { tileX: 22, tileY: 11 },
+        { tileX: 30, tileY: 11 },
+        { tileX: 30, tileY: 14 }
+      ],
+      tags: ['foreman'],
+      health: 18,
+      attackDamage: 4,
+      drops: ['gear-sash']
+    },
+    {
+      kind: 'enemy',
+      tileX: 16,
+      tileY: 17,
+      tags: ['mole'],
+      waypoints: [
+        { tileX: 16, tileY: 17 },
+        { tileX: 12, tileY: 20 },
+        { tileX: 22, tileY: 20 }
+      ],
+      speedTilesPerSecond: 5,
+      drops: ['coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: 32,
+      tileY: 18,
+      tags: ['warden', 'boss'],
+      health: 32,
+      attackDamage: 5,
+      detectionRangeTiles: 7,
+      attackRangeTiles: 1.3,
+      drops: ['woodcutter-sash', 'timber-plank']
+    }
+  ];
+
+  const items: ItemSpawn[] = [
+    { itemId: 'timber-plank', tileX: 14, tileY: 6 },
+    { itemId: 'gear-sash', tileX: 24, tileY: 9 },
+    { itemId: 'lantern-oil', tileX: 30, tileY: 17 }
+  ];
+
+  return {
+    id: 'timber-tunnels',
+    levelName: 'Timber Tunnels',
+    musicKey: 'dungeon',
+    nextLevelId: 'river-hollow',
+    width,
+    height,
+    terrain: 'castle',
+    tiles: map.flat(),
+    spawns,
+    items,
+    hazards: [
+      {
+        id: 'dust-choke',
+        description: 'Dust clouds strain lungs until you find an air pocket.',
+        intervalMs: 8000,
+        damage: 1,
+        appliesTo: 'hero',
+        safeTags: ['air']
+      }
+    ]
+  };
+}
+
+function createRiverHollowLevel(): LevelData {
+  const width = 40;
+  const height = 26;
+  const map: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 13));
+
+  fillRect(map, 0, 0, width, 1, 18);
+  fillRect(map, 0, height - 1, width, 1, 18);
+  fillRect(map, 0, 0, 1, height, 18);
+  fillRect(map, width - 1, 0, 1, height, 18);
+
+  fillRect(map, 4, 4, width - 8, height - 8, 14);
+  fillRect(map, 6, 6, width - 12, 3, 25);
+  fillRect(map, 8, 10, width - 16, 4, 29);
+  fillRect(map, 10, 18, width - 20, 3, 25);
+  map[12][10] = 31;
+  map[12][width - 11] = 31;
+  map[20][Math.floor(width / 2)] = 31;
+
+  const spawns: AgentSpawn[] = [
+    {
+      kind: 'enemy',
+      tileX: 10,
+      tileY: 7,
+      waypoints: [
+        { tileX: 10, tileY: 7 },
+        { tileX: 18, tileY: 7 },
+        { tileX: 18, tileY: 9 }
+      ],
+      tags: ['wisp'],
+      attackDamage: 2,
+      drops: ['spirit-charm']
+    },
+    {
+      kind: 'enemy',
+      tileX: 22,
+      tileY: 12,
+      tags: ['leech'],
+      waypoints: [
+        { tileX: 22, tileY: 12 },
+        { tileX: 26, tileY: 12 },
+        { tileX: 26, tileY: 15 }
+      ],
+      attackDamage: 2,
+      speedTilesPerSecond: 4.5,
+      drops: ['coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: 14,
+      tileY: 18,
+      tags: ['bog'],
+      waypoints: [
+        { tileX: 14, tileY: 18 },
+        { tileX: 12, tileY: 21 },
+        { tileX: 18, tileY: 21 }
+      ],
+      attackDamage: 3,
+      drops: ['coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: 28,
+      tileY: 20,
+      tags: ['kelpie', 'boss'],
+      health: 30,
+      attackDamage: 5,
+      detectionRangeTiles: 8,
+      attackRangeTiles: 1.25,
+      drops: ['still-water-charm', 'creek-pearl']
+    }
+  ];
+
+  const items: ItemSpawn[] = [
+    { itemId: 'spirit-charm', tileX: 11, tileY: 6 },
+    { itemId: 'warmth-salve', tileX: 20, tileY: 19 },
+    { itemId: 'river-etching', tileX: 30, tileY: 10 }
+  ];
+
+  return {
+    id: 'river-hollow',
+    levelName: 'River Hollow',
+    musicKey: 'dungeon',
+    nextLevelId: 'level-1',
+    width,
+    height,
+    terrain: 'castle',
+    tiles: map.flat(),
+    spawns,
+    items,
+    hazards: [
+      {
+        id: 'deep-chill',
+        description: 'Cold mist drains warmth unless you hug braziers.',
+        intervalMs: 6000,
+        damage: 1,
+        appliesTo: 'hero',
+        safeTags: ['warmth']
+      }
+    ]
+  };
+}
+
 const grassLevel = createGrasslandLevel();
+const echoLevel = createEchoingDepthsLevel();
+const timberLevel = createTimberTunnelsLevel();
+const riverLevel = createRiverHollowLevel();
 
 const castleLevel: LevelData = {
   id: 'level-2',
@@ -373,7 +715,7 @@ const castleLevel: LevelData = {
   ]
 };
 
-export const LEVELS: LevelData[] = [grassLevel, castleLevel];
+export const LEVELS: LevelData[] = [grassLevel, echoLevel, timberLevel, riverLevel, castleLevel];
 
 export const LEVELS_BY_ID: Record<string, LevelData> = LEVELS.reduce(
   (acc, level) => ({ ...acc, [level.id]: level }),

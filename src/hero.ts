@@ -10,7 +10,8 @@ import {
 } from './entities';
 import { moveEntityWithCollision } from './movement';
 import { createInventory, Inventory } from './inventory';
-import { SecondaryStats, StatBlock, createDefaultStats, deriveSecondaryStats } from './stats';
+import { SecondaryStats, StatBlock, applyDamage, createDefaultStats, deriveSecondaryStats } from './stats';
+import { getTileMetadata } from './tiles';
 
 export type HeroState = {
   entity: Entity;
@@ -99,11 +100,34 @@ export function updateHero(
 
   const inputIsActive = dx !== 0 || dy !== 0;
 
+  const tileBelow = map[hero.entity.position.tileY]?.[hero.entity.position.tileX] ?? 0;
+  const tileMetadata = getTileMetadata(tileBelow);
+
+  const moveCost = tileMetadata.moveCost ?? 1;
+  const slowTag = tileMetadata.tags?.includes('slow') ? 0.8 : 1;
+  const chillTag = tileMetadata.tags?.includes('chill') ? 0.85 : 1;
+  const chilledStatus = hero.statusEffects.includes('chilled') ? 0.9 : 1;
+  const speedMultiplier = (1 / moveCost) * slowTag * chillTag * chilledStatus;
+
+  if (tileMetadata.damagePerSecond) {
+    const heroEntity = hero.entity as EntityWithComponent<'health'>;
+    applyDamage(heroEntity, (tileMetadata.damagePerSecond * deltaMs) / 1000);
+    hero.isAlive = Boolean(heroEntity.components.health?.isAlive);
+  }
+
+  if (tileMetadata.tags?.includes('cleanse')) {
+    hero.statusEffects = hero.statusEffects.filter((effect) => effect !== 'chilled');
+  } else if (tileMetadata.tags?.includes('warmth')) {
+    hero.statusEffects = hero.statusEffects.filter((effect) => effect !== 'chilled');
+  } else if (tileMetadata.tags?.includes('chill') && !hero.statusEffects.includes('chilled')) {
+    hero.statusEffects.push('chilled');
+  }
+
   if (inputIsActive) {
     const length = Math.hypot(dx, dy) || 1;
     const normalizedDx = dx / length;
     const normalizedDy = dy / length;
-    const stepPixels = (hero.speedPixelsPerSecond ?? hero.speedTilesPerSecond * TILE_SIZE) * deltaSeconds;
+    const stepPixels = (hero.speedPixelsPerSecond ?? hero.speedTilesPerSecond * TILE_SIZE) * deltaSeconds * speedMultiplier;
 
     const direction: Direction | null = (() => {
       if (normalizedDy > 0) return 0;

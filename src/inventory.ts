@@ -64,6 +64,115 @@ export const ITEM_DEFINITIONS: Record<string, ItemDefinition> = {
     rarity: 'uncommon',
     slot: 'armor',
     modifiers: { speed: 0.1 }
+  },
+  'glow-crystal': {
+    id: 'glow-crystal',
+    name: 'Glow Crystal',
+    category: 'quest',
+    stackSize: 10,
+    rarity: 'uncommon'
+  },
+  'lantern-polish': {
+    id: 'lantern-polish',
+    name: 'Lantern Polish',
+    category: 'consumable',
+    stackSize: 5,
+    rarity: 'uncommon'
+  },
+  'coin-pouch': {
+    id: 'coin-pouch',
+    name: 'Coin Pouch',
+    category: 'currency',
+    stackSize: 3,
+    rarity: 'uncommon'
+  },
+  'slime-gel': {
+    id: 'slime-gel',
+    name: 'Slime Gel',
+    category: 'quest',
+    stackSize: 10,
+    rarity: 'common'
+  },
+  'timber-plank': {
+    id: 'timber-plank',
+    name: 'Timber Plank',
+    category: 'quest',
+    stackSize: 20,
+    rarity: 'common'
+  },
+  'gear-sash': {
+    id: 'gear-sash',
+    name: 'Gear Sash',
+    category: 'equipment',
+    stackSize: 1,
+    rarity: 'rare',
+    slot: 'armor',
+    modifiers: { defense: 2 }
+  },
+  'lantern-oil': {
+    id: 'lantern-oil',
+    name: 'Lantern Oil',
+    category: 'consumable',
+    stackSize: 5,
+    rarity: 'uncommon'
+  },
+  'woodcutter-sash': {
+    id: 'woodcutter-sash',
+    name: 'Woodcutter Sash',
+    category: 'equipment',
+    stackSize: 1,
+    rarity: 'rare',
+    slot: 'armor',
+    modifiers: { defense: 3, maxHp: 2 }
+  },
+  'spirit-charm': {
+    id: 'spirit-charm',
+    name: 'Spirit Charm',
+    category: 'equipment',
+    stackSize: 1,
+    rarity: 'rare',
+    slot: 'accessory',
+    modifiers: { defense: 1 }
+  },
+  'warmth-salve': {
+    id: 'warmth-salve',
+    name: 'Warmth Salve',
+    category: 'consumable',
+    stackSize: 5,
+    rarity: 'uncommon',
+    healAmount: 8
+  },
+  'river-etching': {
+    id: 'river-etching',
+    name: 'River Map Etching',
+    category: 'quest',
+    stackSize: 5,
+    rarity: 'uncommon'
+  },
+  'still-water-charm': {
+    id: 'still-water-charm',
+    name: 'Charm of Still Waters',
+    category: 'equipment',
+    stackSize: 1,
+    rarity: 'rare',
+    slot: 'accessory',
+    modifiers: { defense: 2 }
+  },
+  'creek-pearl': {
+    id: 'creek-pearl',
+    name: 'Creek Pearl',
+    category: 'currency',
+    stackSize: 50,
+    rarity: 'uncommon'
+  },
+  'broodmother-lamp': {
+    id: 'broodmother-lamp',
+    name: 'Broodmother Lamp Housing',
+    category: 'equipment',
+    stackSize: 1,
+    rarity: 'epic',
+    slot: 'accessory',
+    modifiers: { speed: 0.05, maxHp: 3 }
   }
 };
 
