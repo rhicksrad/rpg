@@ -1,0 +1,8 @@
+node_modules
+.DS_Store
+dist
+.vite
+npm-debug.log*
+pnpm-debug.log*
+.idea
+.env
