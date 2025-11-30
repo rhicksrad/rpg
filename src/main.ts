@@ -17,6 +17,8 @@ if (!ctx) {
   throw new Error('Unable to acquire 2D context');
 }
 
+ctx.imageSmoothingEnabled = false;
+
 const keys: Record<string, boolean> = {};
 let interactRequested = false;
 let previousGamepadButtons: boolean[] = [];
@@ -98,6 +100,9 @@ async function start() {
     height: canvas.height
   };
 
+  resizeCanvasToViewport(camera);
+  window.addEventListener('resize', () => resizeCanvasToViewport(camera));
+
   const { container: loaderContainer, select: loaderSelect } = createLevelLoader(
     LEVELS,
     (levelId) => loadLevel(levelId),
@@ -154,6 +159,17 @@ async function start() {
 start().catch((err) => {
   console.error('Failed to start game', err);
 });
+
+function resizeCanvasToViewport(camera: Camera): void {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  canvas.width = width;
+  canvas.height = height;
+
+  camera.width = width;
+  camera.height = height;
+}
 
 function updateCamera(camera: Camera, hero: HeroState, map: number[][]): void {
   const mapWidth = map[0].length * TILE_SIZE;
