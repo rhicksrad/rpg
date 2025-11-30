@@ -3,6 +3,7 @@ import { Assets, TILE_SIZE, loadAssets } from './assets';
 import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } from './hero';
 import { Camera, drawTileMap } from './renderTiles';
 import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
+import { InteractTarget, getInteractionTarget, interact } from './interactions';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -17,11 +18,16 @@ if (!ctx) {
 }
 
 const keys: Record<string, boolean> = {};
+let interactRequested = false;
+let previousGamepadButtons: boolean[] = [];
 
 window.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
     keys[key] = true;
+    event.preventDefault();
+  } else if (key === 'e' && !event.repeat) {
+    interactRequested = true;
     event.preventDefault();
   }
 });
@@ -127,6 +133,11 @@ async function start() {
     const deltaMs = timestamp - lastTime;
     lastTime = timestamp;
 
+    if (consumeInteractRequest() || pollGamepadInteract()) {
+      const target: InteractTarget | null = getInteractionTarget(hero, map);
+      interact(target);
+    }
+
     updateHero(hero, keys, deltaMs, map);
     updateCamera(camera, hero, map);
 
@@ -160,4 +171,26 @@ function updateCamera(camera: Camera, hero: HeroState, map: number[][]): void {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function consumeInteractRequest(): boolean {
+  const shouldInteract = interactRequested;
+  interactRequested = false;
+  return shouldInteract;
+}
+
+function pollGamepadInteract(): boolean {
+  const gamepads = navigator.getGamepads?.() ?? [];
+  const primaryPad = gamepads.find((pad) => pad !== null);
+
+  if (!primaryPad) {
+    previousGamepadButtons = [];
+    return false;
+  }
+
+  const pressedButtons = primaryPad.buttons.map((button) => button.pressed);
+  const interactPressed = pressedButtons[0] && !previousGamepadButtons[0];
+  previousGamepadButtons = pressedButtons;
+
+  return interactPressed;
 }

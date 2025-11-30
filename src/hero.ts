@@ -154,6 +154,22 @@ export function getHeroPixelPosition(hero: HeroState): { x: number; y: number } 
   };
 }
 
+export function getTileInFront(hero: HeroState): { tileX: number; tileY: number } {
+  const offsets: Record<HeroState['direction'], { dx: number; dy: number }> = {
+    0: { dx: 0, dy: 1 },
+    1: { dx: -1, dy: 0 },
+    2: { dx: 1, dy: 0 },
+    3: { dx: 0, dy: -1 }
+  };
+
+  const { dx, dy } = offsets[hero.direction];
+
+  return {
+    tileX: hero.tileX + dx,
+    tileY: hero.tileY + dy
+  };
+}
+
 function setHeroPixelPosition(hero: HeroState, x: number, y: number): void {
   const tileX = Math.floor(x / TILE_SIZE);
   const tileY = Math.floor(y / TILE_SIZE);
