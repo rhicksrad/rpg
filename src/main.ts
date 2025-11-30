@@ -4,7 +4,7 @@ import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } fro
 import { Camera, drawTileMap } from './renderTiles';
 import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
 import { InteractTarget, getInteractionTarget, interact } from './interactions';
-import { EntityStore, createEntityStore } from './entities';
+import { EntityRegistry, createEntityRegistry } from './entities';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -93,7 +93,7 @@ async function start() {
   let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
   let map = levelTilesToGrid(currentLevel);
   let hero = createHero(map, assets.hero);
-  let entities: EntityStore = createEntityStore([hero.entity]);
+  let entityRegistry: EntityRegistry = createEntityRegistry([hero.entity]);
   let activeTerrain = assets.terrain[currentLevel.terrain];
   const camera: Camera = {
     x: 0,
@@ -128,7 +128,7 @@ async function start() {
     currentLevel = nextLevel;
     map = levelTilesToGrid(currentLevel);
     hero = createHero(map, assets.hero);
-    entities = createEntityStore([hero.entity]);
+    entityRegistry = createEntityRegistry([hero.entity]);
     activeTerrain = assets.terrain[currentLevel.terrain];
     camera.x = 0;
     camera.y = 0;
@@ -144,8 +144,8 @@ async function start() {
 
   function update(deltaMs: number) {
     if (consumeInteractRequest() || pollGamepadInteract()) {
-      const target: InteractTarget | null = getInteractionTarget(hero, map);
-      interact(target);
+      const target: InteractTarget | null = getInteractionTarget(hero, map, entityRegistry);
+      interact(target, hero);
     }
 
     updateHero(hero, keys, deltaMs, map);
