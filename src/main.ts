@@ -102,8 +102,8 @@ async function start() {
     height: canvas.height
   };
 
-  resizeCanvasToViewport(camera);
-  window.addEventListener('resize', () => resizeCanvasToViewport(camera));
+  resizeCanvasToViewport(camera, map);
+  window.addEventListener('resize', () => resizeCanvasToViewport(camera, map));
 
   const { container: loaderContainer, select: loaderSelect } = createLevelLoader(
     LEVELS,
@@ -132,6 +132,7 @@ async function start() {
     activeTerrain = assets.terrain[currentLevel.terrain];
     camera.x = 0;
     camera.y = 0;
+    resizeCanvasToViewport(camera, map);
     loaderSelect.value = currentLevel.id;
   }
 
@@ -163,12 +164,16 @@ start().catch((err) => {
   console.error('Failed to start game', err);
 });
 
-function resizeCanvasToViewport(camera: Camera): void {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+function resizeCanvasToViewport(camera: Camera, map: number[][]): void {
+  const mapWidth = map[0].length * TILE_SIZE;
+  const mapHeight = map.length * TILE_SIZE;
+  const width = Math.min(window.innerWidth, mapWidth);
+  const height = Math.min(window.innerHeight, mapHeight);
 
   canvas.width = width;
   canvas.height = height;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
 
   camera.width = width;
   camera.height = height;

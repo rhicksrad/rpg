@@ -23,7 +23,7 @@ export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
   const tileX = Math.floor(map[0].length / 2);
   const tileY = Math.floor(map.length / 2);
   const position = createPosition(tileX, tileY);
-  const sprite = createSprite(heroSheet, 0, 0);
+  const sprite = createSprite(heroSheet, 0, 1);
 
   const heroEntity = createEntity({
     kind: 'player',
@@ -134,11 +134,11 @@ export function updateHero(
         hero.entity.sprite.frame = 1;
       }
     } else {
-      hero.entity.sprite.frame = 0;
+      hero.entity.sprite.frame = 1;
       hero.frameTimer = 0;
     }
   } else {
-    hero.entity.sprite.frame = 0;
+    hero.entity.sprite.frame = 1;
     hero.frameTimer = 0;
   }
 }

@@ -41,10 +41,10 @@ export async function loadAssets(): Promise<Assets> {
   return {
     hero: {
       image: heroImage,
-      tileWidth: TILE_SIZE,
-      tileHeight: TILE_SIZE,
-      columns: 3,
-      rows: 4
+      tileWidth: 64,
+      tileHeight: 64,
+      columns: 16,
+      rows: 16
     },
     terrain: {
       grass: {
