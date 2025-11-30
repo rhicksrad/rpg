@@ -22,10 +22,42 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
+  flex-direction: column;
+  gap: 12px;
 }
 
 canvas {
   border: 2px solid #f8e473;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+}
+
+.level-loader {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #161a22;
+  border: 1px solid #2b3242;
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.level-loader label {
+  font-size: 12px;
+}
+
+.level-loader select,
+.level-loader button {
+  background: #0f1115;
+  color: #f8e473;
+  border: 1px solid #2b3242;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.level-loader button:hover,
+.level-loader select:hover {
+  border-color: #f8e473;
 }

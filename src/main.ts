@@ -2,6 +2,7 @@ import './style.css';
 import { Assets, TILE_SIZE, loadAssets } from './assets';
 import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } from './hero';
 import { Camera, drawTileMap } from './renderTiles';
+import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -30,53 +31,95 @@ window.addEventListener('keyup', (event) => {
   delete keys[key];
 });
 
-function createMap(): number[][] {
-  const cols = Math.ceil(canvas.width / TILE_SIZE) * 3;
-  const rows = Math.ceil(canvas.height / TILE_SIZE) * 3;
-  const centerCol = Math.floor(cols / 2);
-  const centerRow = Math.floor(rows / 2);
-
-  const wallTileIndex = 18;
-  const waterTileIndex = 22;
-  const pitTileIndex = 27;
-
-  const map: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const isBorder = row === 0 || col === 0 || row === rows - 1 || col === cols - 1;
-      const isMainPath = row === centerRow || col === centerCol;
-      const isAccent = (row + col) % 11 === 0;
-      const isWater = row >= Math.floor(rows / 3) && row <= Math.floor(rows / 3) + 1 && col >= 2 && col <= 4;
-      const isPit = row >= Math.floor((rows * 2) / 3) && row <= Math.floor((rows * 2) / 3) + 1 && col >= cols - 6 && col <= cols - 4;
-
-      if (isBorder) {
-        map[row][col] = wallTileIndex;
-      } else if (isWater) {
-        map[row][col] = waterTileIndex;
-      } else if (isPit) {
-        map[row][col] = pitTileIndex;
-      } else if (isMainPath) {
-        map[row][col] = 9; // path tile
-      } else if (isAccent) {
-        map[row][col] = 2; // accent tile
-      }
-    }
+function levelTilesToGrid(level: LevelData): number[][] {
+  if (level.tiles.length !== level.width * level.height) {
+    throw new Error(`Level ${level.id} tile data is inconsistent with dimensions`);
   }
 
-  return map;
+  const grid: number[][] = [];
+
+  for (let row = 0; row < level.height; row += 1) {
+    const start = row * level.width;
+    grid.push(level.tiles.slice(start, start + level.width));
+  }
+
+  return grid;
+}
+
+function createLevelLoader(
+  levels: LevelData[],
+  onSelect: (levelId: string) => void,
+  onNext: () => void
+): { container: HTMLDivElement; select: HTMLSelectElement } {
+  const container = document.createElement('div');
+  container.className = 'level-loader';
+
+  const label = document.createElement('label');
+  label.textContent = 'Load level:';
+
+  const select = document.createElement('select');
+  select.ariaLabel = 'Select level';
+
+  levels.forEach((level) => {
+    const option = document.createElement('option');
+    option.value = level.id;
+    option.textContent = level.levelName;
+    select.appendChild(option);
+  });
+
+  select.addEventListener('change', () => onSelect(select.value));
+
+  const nextButton = document.createElement('button');
+  nextButton.type = 'button';
+  nextButton.textContent = 'Next level';
+  nextButton.addEventListener('click', onNext);
+
+  container.append(label, select, nextButton);
+
+  return { container, select };
 }
 
 async function start() {
   const assets: Assets = await loadAssets();
-  const map = createMap();
-  const hero = createHero(map);
+  let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
+  let map = levelTilesToGrid(currentLevel);
+  let hero = createHero(map);
+  let activeTerrain = assets.terrain[currentLevel.terrain];
   const camera: Camera = {
     x: 0,
     y: 0,
     width: canvas.width,
     height: canvas.height
   };
+
+  const { container: loaderContainer, select: loaderSelect } = createLevelLoader(
+    LEVELS,
+    (levelId) => loadLevel(levelId),
+    () => {
+      const nextId = currentLevel.nextLevelId ?? DEFAULT_LEVEL_ID;
+      loadLevel(nextId);
+    }
+  );
+
+  const app = document.getElementById('app');
+  if (app && app.firstChild) {
+    app.insertBefore(loaderContainer, app.firstChild);
+  } else if (app) {
+    app.appendChild(loaderContainer);
+  }
+
+  loaderSelect.value = currentLevel.id;
+
+  function loadLevel(levelId: string) {
+    const nextLevel = LEVELS_BY_ID[levelId] ?? LEVELS_BY_ID[DEFAULT_LEVEL_ID];
+    currentLevel = nextLevel;
+    map = levelTilesToGrid(currentLevel);
+    hero = createHero(map);
+    activeTerrain = assets.terrain[currentLevel.terrain];
+    camera.x = 0;
+    camera.y = 0;
+    loaderSelect.value = currentLevel.id;
+  }
 
   let lastTime = performance.now();
 
@@ -88,7 +131,7 @@ async function start() {
     updateCamera(camera, hero, map);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawTileMap(ctx, assets.terrain.grass, map, camera);
+    drawTileMap(ctx, activeTerrain, map, camera);
     drawHero(ctx, assets.hero, hero, camera);
 
     requestAnimationFrame(gameLoop);
