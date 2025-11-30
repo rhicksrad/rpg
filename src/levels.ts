@@ -1,7 +1,12 @@
 import { AgentSpawn } from './agents';
 import { ItemSpawn } from './items';
 
-export type LevelTerrain = 'grass' | 'castle';
+export type LevelTerrain = 'overworld' | 'village' | 'castle';
+
+export type LevelLayer = {
+  terrain: LevelTerrain;
+  tiles: number[];
+};
 
 export type LevelHazard = {
   id: string;
@@ -21,6 +26,7 @@ export type LevelData = {
   height: number;
   tiles: number[];
   terrain: LevelTerrain;
+  layers?: LevelLayer[];
   spawns?: AgentSpawn[];
   items?: ItemSpawn[];
   hazards?: LevelHazard[];
@@ -52,6 +58,17 @@ const VILLAGE_TILES = {
   barrelStack: 22,
   bushAlt: 23,
   well: 24
+};
+
+const OVERWORLD_TILES = {
+  grass: 90,
+  grassAlt: 91,
+  path: 81,
+  gravel: 110,
+  brightStone: 112,
+  rockRidge: 138,
+  darkRock: 168,
+  mossyRock: 170
 };
 
 function fillRect(
@@ -202,82 +219,161 @@ function scatterVillageDetails(map: number[][], midRow: number, midCol: number):
   map[rows - 7][cols - 9] = VILLAGE_TILES.bushAlt;
 }
 
+function combineLayerTiles(layers: number[][][]): number[][] {
+  if (!layers.length) return [];
+  const base = layers[0].map((row) => [...row]);
+
+  for (let i = 1; i < layers.length; i += 1) {
+    const overlay = layers[i];
+    for (let row = 0; row < base.length; row += 1) {
+      for (let col = 0; col < base[0].length; col += 1) {
+        if (overlay[row][col] >= 0) {
+          base[row][col] = overlay[row][col];
+        }
+      }
+    }
+  }
+
+  return base;
+}
+
 function createGrasslandLevel(): LevelData {
-  const width = 64;
-  const height = 48;
-  const map = createVillageBase(width, height);
+  const width = 200;
+  const height = 150;
+  const overworld = createOverworldBase(width, height);
+  const structures = createOverworldStructures(width, height);
+  const collision = combineLayerTiles([overworld, structures]);
 
   const midRow = Math.floor(height / 2);
   const midCol = Math.floor(width / 2);
 
-  addPathCross(map, midRow, midCol);
-  addPlaza(map, midRow, midCol);
+  const subAreas = {
+    north: { x: midCol, y: midRow - 50 },
+    east: { x: midCol + 65, y: midRow + 8 },
+    west: { x: midCol - 68, y: midRow - 12 }
+  } as const;
 
-  addBuilding(map, midCol - 12, midRow - 11, 10, 8, 0, 'wood');
-  addBuilding(map, midCol + 4, midRow - 12, 9, 8, 0, 'brick');
-  addBuilding(map, midCol - 18, midRow + 2, 11, 8, 1, 'brick');
-  addBuilding(map, midCol + 8, midRow + 3, 10, 8, -1, 'wood');
-
-  addFencedGarden(map, midCol - 22, midRow + 12, 12, 8, -1);
-  addFencedGarden(map, midCol + 12, midRow + 13, 11, 8, 1);
-  fillRect(map, midCol - 4, midRow + 13, 8, 6, VILLAGE_TILES.dirtPacked);
-
-  scatterVillageDetails(map, midRow, midCol);
+  connectTownToSubAreas(overworld, midCol, midRow, subAreas);
 
   const spawns: AgentSpawn[] = [
-    {
-      kind: 'npc',
-      tileX: midCol - 2,
-      tileY: midRow,
-      facing: 1,
-      tags: ['villager']
-    },
-    {
-      kind: 'npc',
-      tileX: midCol + 8,
-      tileY: midRow - 1,
-      facing: 2,
-      tags: ['scout']
-    },
+    { kind: 'npc', tileX: midCol - 3, tileY: midRow + 2, facing: 1, tags: ['villager'] },
+    { kind: 'npc', tileX: midCol + 10, tileY: midRow - 3, facing: 2, tags: ['scout'] },
     {
       kind: 'npc',
       tileX: midCol,
-      tileY: midRow - 3,
+      tileY: midRow - 5,
       facing: 0,
       spriteIndex: 12,
       tags: ['quest-giver', 'old-man']
     },
+    // Outskirts patrols
     {
       kind: 'enemy',
-      tileX: 14,
-      tileY: midRow + 4,
+      tileX: midCol - 24,
+      tileY: midRow + 24,
       waypoints: [
-        { tileX: 14, tileY: midRow + 4 },
-        { tileX: 6, tileY: midRow + 10 },
-        { tileX: 20, tileY: midRow + 8 }
+        { tileX: midCol - 24, tileY: midRow + 24 },
+        { tileX: midCol - 30, tileY: midRow + 30 },
+        { tileX: midCol - 16, tileY: midRow + 32 }
       ],
-      pauseDurationMs: 480,
-      speedTilesPerSecond: 3,
+      pauseDurationMs: 420,
+      speedTilesPerSecond: 3.4,
       tags: ['slime']
     },
     {
       kind: 'enemy',
-      tileX: midCol + 18,
-      tileY: 12,
+      tileX: midCol + 30,
+      tileY: midRow + 26,
       waypoints: [
-        { tileX: midCol + 18, tileY: 12 },
-        { tileX: midCol + 18, tileY: 6 },
-        { tileX: midCol + 10, tileY: 12 }
+        { tileX: midCol + 30, tileY: midRow + 26 },
+        { tileX: midCol + 40, tileY: midRow + 28 },
+        { tileX: midCol + 30, tileY: midRow + 34 }
       ],
-      pauseDurationMs: 520,
+      pauseDurationMs: 480,
       tags: ['bat']
+    },
+    // Quest approach: north wilds
+    {
+      kind: 'enemy',
+      tileX: subAreas.north.x,
+      tileY: subAreas.north.y - 6,
+      waypoints: [
+        { tileX: subAreas.north.x, tileY: subAreas.north.y - 6 },
+        { tileX: subAreas.north.x - 6, tileY: subAreas.north.y - 2 },
+        { tileX: subAreas.north.x + 6, tileY: subAreas.north.y - 2 }
+      ],
+      speedTilesPerSecond: 4.2,
+      tags: ['rat'],
+      drops: ['coin']
+    },
+    {
+      kind: 'enemy',
+      tileX: subAreas.north.x,
+      tileY: subAreas.north.y - 12,
+      tags: ['warden', 'boss'],
+      health: 32,
+      attackDamage: 5,
+      detectionRangeTiles: 8,
+      attackRangeTiles: 1.35,
+      drops: ['gear-sash', 'coin-pouch']
+    },
+    // Quest approach: east stones
+    {
+      kind: 'enemy',
+      tileX: subAreas.east.x - 4,
+      tileY: subAreas.east.y + 6,
+      waypoints: [
+        { tileX: subAreas.east.x - 4, tileY: subAreas.east.y + 6 },
+        { tileX: subAreas.east.x + 8, tileY: subAreas.east.y + 6 },
+        { tileX: subAreas.east.x + 4, tileY: subAreas.east.y + 12 }
+      ],
+      speedTilesPerSecond: 4.5,
+      tags: ['pickaxer'],
+      attackDamage: 3,
+      drops: ['timber-plank']
+    },
+    {
+      kind: 'enemy',
+      tileX: subAreas.east.x + 10,
+      tileY: subAreas.east.y + 10,
+      tags: ['foreman'],
+      health: 24,
+      attackDamage: 4,
+      detectionRangeTiles: 7,
+      drops: ['gear-sash']
+    },
+    // Quest approach: western marsh
+    {
+      kind: 'enemy',
+      tileX: subAreas.west.x - 6,
+      tileY: subAreas.west.y,
+      waypoints: [
+        { tileX: subAreas.west.x - 6, tileY: subAreas.west.y },
+        { tileX: subAreas.west.x - 12, tileY: subAreas.west.y + 4 },
+        { tileX: subAreas.west.x, tileY: subAreas.west.y + 6 }
+      ],
+      attackDamage: 2,
+      tags: ['wisp']
+    },
+    {
+      kind: 'enemy',
+      tileX: subAreas.west.x - 2,
+      tileY: subAreas.west.y + 10,
+      tags: ['bog', 'boss'],
+      health: 30,
+      attackDamage: 4,
+      detectionRangeTiles: 7,
+      speedTilesPerSecond: 4.2,
+      drops: ['creek-pearl']
     }
   ];
 
   const items: ItemSpawn[] = [
-    { itemId: 'coin', tileX: midCol, tileY: midRow + 2 },
-    { itemId: 'heart', tileX: midCol + 3, tileY: midRow + 3 },
-    { itemId: 'sword', tileX: midCol - 6, tileY: midRow - 4 }
+    { itemId: 'coin', tileX: midCol, tileY: midRow + 6 },
+    { itemId: 'heart', tileX: midCol + 6, tileY: midRow + 4 },
+    { itemId: 'sword', tileX: midCol - 10, tileY: midRow - 8 },
+    { itemId: 'lantern-oil', tileX: subAreas.east.x, tileY: subAreas.east.y + 4 },
+    { itemId: 'warmth-salve', tileX: subAreas.west.x - 4, tileY: subAreas.west.y + 8 }
   ];
 
   return {
@@ -287,11 +383,112 @@ function createGrasslandLevel(): LevelData {
     nextLevelId: 'echoing-depths',
     width,
     height,
-    terrain: 'grass',
-    tiles: map.flat(),
+    terrain: 'overworld',
+    tiles: collision.flat(),
+    layers: [
+      { terrain: 'overworld', tiles: overworld.flat() },
+      { terrain: 'village', tiles: structures.flat() }
+    ],
     spawns,
     items
   };
+}
+
+function createOverworldBase(width: number, height: number): number[][] {
+  const map = Array.from({ length: height }, (_, row) =>
+    Array.from({ length: width }, (_, col) => {
+      const noise = (row * 17 + col * 13) % 11;
+      if (noise === 0) return OVERWORLD_TILES.grassAlt;
+      if (noise === 1) return OVERWORLD_TILES.gravel;
+      return OVERWORLD_TILES.grass;
+    })
+  );
+
+  // Rocky borders to keep players centered while the camera follows.
+  fillRect(map, 0, 0, width, 4, OVERWORLD_TILES.darkRock);
+  fillRect(map, 0, height - 4, width, 4, OVERWORLD_TILES.darkRock);
+  fillRect(map, 0, 0, 4, height, OVERWORLD_TILES.darkRock);
+  fillRect(map, width - 4, 0, 4, height, OVERWORLD_TILES.darkRock);
+
+  for (let row = 6; row < height - 6; row += 9) {
+    for (let col = 8; col < width - 8; col += 12) {
+      if ((row + col) % 3 === 0) {
+        map[row][col] = OVERWORLD_TILES.rockRidge;
+      } else if ((row + col) % 5 === 0) {
+        map[row][col] = OVERWORLD_TILES.mossyRock;
+      }
+    }
+  }
+
+  // Clearings for the town and sub-areas.
+  const midRow = Math.floor(height / 2);
+  const midCol = Math.floor(width / 2);
+  fillRect(map, midCol - 18, midRow - 18, 36, 36, OVERWORLD_TILES.grassAlt);
+  fillRect(map, midCol - 4, midRow - 4, 8, 8, OVERWORLD_TILES.gravel);
+
+  const subAreas = [
+    { x: midCol, y: midRow - 50 },
+    { x: midCol + 65, y: midRow + 8 },
+    { x: midCol - 68, y: midRow - 12 }
+  ];
+  subAreas.forEach(({ x, y }) => {
+    fillRect(map, x - 10, y - 8, 20, 16, OVERWORLD_TILES.grassAlt);
+    fillRect(map, x - 8, y - 6, 16, 12, OVERWORLD_TILES.gravel);
+  });
+
+  return map;
+}
+
+function createOverworldStructures(width: number, height: number): number[][] {
+  const map = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
+  const midRow = Math.floor(height / 2);
+  const midCol = Math.floor(width / 2);
+
+  addPathCross(map, midRow, midCol);
+  addPlaza(map, midRow, midCol);
+
+  addBuilding(map, midCol - 20, midRow - 12, 12, 9, 0, 'wood');
+  addBuilding(map, midCol + 6, midRow - 14, 11, 9, 0, 'brick');
+  addBuilding(map, midCol - 26, midRow + 6, 12, 9, 1, 'brick');
+  addBuilding(map, midCol + 10, midRow + 7, 11, 9, -1, 'wood');
+
+  addFencedGarden(map, midCol - 30, midRow + 18, 14, 9, -1);
+  addFencedGarden(map, midCol + 18, midRow + 18, 13, 9, 1);
+  fillRect(map, midCol - 5, midRow + 18, 10, 6, VILLAGE_TILES.dirtPacked);
+
+  scatterVillageDetails(map, midRow, midCol);
+
+  const entrances = [
+    { x: midCol, y: midRow - 42 },
+    { x: midCol + 65, y: midRow + 2 },
+    { x: midCol - 68, y: midRow - 18 }
+  ];
+
+  entrances.forEach(({ x, y }) => {
+    fillRect(map, x - 3, y - 2, 6, 5, VILLAGE_TILES.dirtPacked);
+    fillRect(map, x - 2, y - 1, 4, 3, VILLAGE_TILES.gravel);
+    map[y - 2][x] = VILLAGE_TILES.sign;
+    map[y - 1][x] = VILLAGE_TILES.doorAlt;
+    map[y + 1][x] = VILLAGE_TILES.bushAlt;
+  });
+
+  return map;
+}
+
+function connectTownToSubAreas(
+  overworld: number[][],
+  midCol: number,
+  midRow: number,
+  subAreas: { north: { x: number; y: number }; east: { x: number; y: number }; west: { x: number; y: number } }
+): void {
+  drawVerticalPath(overworld, midCol, subAreas.north.y, midRow, OVERWORLD_TILES.path);
+  drawHorizontalPath(overworld, subAreas.north.y, midCol - 4, midCol + 4, OVERWORLD_TILES.brightStone);
+
+  drawHorizontalPath(overworld, midRow + 6, midCol, subAreas.east.x, OVERWORLD_TILES.path);
+  drawVerticalPath(overworld, subAreas.east.x, midRow + 6, subAreas.east.y, OVERWORLD_TILES.brightStone);
+
+  drawHorizontalPath(overworld, midRow - 8, subAreas.west.x, midCol, OVERWORLD_TILES.path);
+  drawVerticalPath(overworld, subAreas.west.x, subAreas.west.y, midRow - 8, OVERWORLD_TILES.brightStone);
 }
 
 function generateTiles(

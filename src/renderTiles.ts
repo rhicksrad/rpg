@@ -46,7 +46,16 @@ export function drawTileMap(
   for (let row = startRow; row < endRow; row += 1) {
     for (let col = startCol; col < endCol; col += 1) {
       const tileIndex = map[row][col];
+      if (tileIndex < 0) continue;
       drawTile(ctx, sheet, tileIndex, col * TILE_SIZE - camera.x, row * TILE_SIZE - camera.y);
     }
   }
+}
+
+export function drawTileLayers(
+  ctx: CanvasRenderingContext2D,
+  layers: { sheet: SpriteSheet; map: number[][] }[],
+  camera: Camera
+): void {
+  layers.forEach((layer) => drawTileMap(ctx, layer.sheet, layer.map, camera));
 }

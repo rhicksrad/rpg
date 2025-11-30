@@ -42,7 +42,15 @@ const TILE_METADATA: Record<number, TileMetadata> = {
   28: { type: 'pit', collidable: false, damagePerSecond: 4, moveCost: 1.2, tags: ['pulse'] },
   29: { type: 'water', collidable: false, damagePerSecond: 2, moveCost: 1.3, tags: ['chill'] },
   30: { type: 'wall', collidable: true, tags: ['cover'] },
-  31: { type: 'floor', collidable: false, moveCost: 0.8, tags: ['air', 'warmth'] }
+  31: { type: 'floor', collidable: false, moveCost: 0.8, tags: ['air', 'warmth'] },
+  90: { type: 'floor', collidable: false, moveCost: 1 }, // overworld grass
+  91: { type: 'floor', collidable: false, moveCost: 1 }, // overworld grass alt
+  81: { type: 'floor', collidable: false, moveCost: 1 }, // overworld path
+  110: { type: 'floor', collidable: false, moveCost: 0.95 }, // gravel clearing
+  112: { type: 'floor', collidable: false, moveCost: 1 }, // bright stone markers
+  138: { type: 'wall', collidable: true, tags: ['cover'] }, // rocky ridge
+  168: { type: 'wall', collidable: true, tags: ['cover'] }, // dark rock walling
+  170: { type: 'wall', collidable: true, tags: ['cover'] } // mossy rock walling
 };
 
 export function getTileMetadata(tileIndex: number): TileMetadata {
