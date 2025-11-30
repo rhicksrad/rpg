@@ -4,6 +4,7 @@ import { HeroState, createHero, drawHero, getHeroPixelPosition, updateHero } fro
 import { Camera, drawTileMap } from './renderTiles';
 import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
 import { InteractTarget, getInteractionTarget, interact } from './interactions';
+import { EntityStore, createEntityStore } from './entities';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -91,7 +92,8 @@ async function start() {
   const assets: Assets = await loadAssets();
   let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
   let map = levelTilesToGrid(currentLevel);
-  let hero = createHero(map);
+  let hero = createHero(map, assets.hero);
+  let entities: EntityStore = createEntityStore([hero.entity]);
   let activeTerrain = assets.terrain[currentLevel.terrain];
   const camera: Camera = {
     x: 0,
@@ -125,7 +127,8 @@ async function start() {
     const nextLevel = LEVELS_BY_ID[levelId] ?? LEVELS_BY_ID[DEFAULT_LEVEL_ID];
     currentLevel = nextLevel;
     map = levelTilesToGrid(currentLevel);
-    hero = createHero(map);
+    hero = createHero(map, assets.hero);
+    entities = createEntityStore([hero.entity]);
     activeTerrain = assets.terrain[currentLevel.terrain];
     camera.x = 0;
     camera.y = 0;

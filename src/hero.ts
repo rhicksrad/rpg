@@ -1,13 +1,17 @@
 import { SpriteSheet, TILE_SIZE } from './assets';
+import {
+  Direction,
+  Entity,
+  createEntity,
+  createPosition,
+  createSprite,
+  getEntityPixelPosition,
+  setEntityPixelPosition
+} from './entities';
 import { isTileCollidable } from './tiles';
 
 export type HeroState = {
-  tileX: number;
-  tileY: number;
-  offsetX: number;
-  offsetY: number;
-  direction: 0 | 1 | 2 | 3; // down, left, right, up
-  frame: 0 | 1 | 2; // idle/walk frames
+  entity: Entity;
   frameTimer: number;
   speedTilesPerSecond: number;
   speedPixelsPerSecond?: number;
@@ -15,17 +19,25 @@ export type HeroState = {
 
 const FRAME_DURATION_MS = 150;
 
-export function createHero(map: number[][]): HeroState {
+export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
   const tileX = Math.floor(map[0].length / 2);
   const tileY = Math.floor(map.length / 2);
+  const position = createPosition(tileX, tileY);
+  const sprite = createSprite(heroSheet, 0, 0);
+
+  const heroEntity = createEntity({
+    kind: 'player',
+    position,
+    sprite,
+    components: {
+      collidable: { solid: true },
+      health: { current: 5, max: 5 },
+      interactable: { prompt: 'Hero' }
+    }
+  });
 
   return {
-    tileX,
-    tileY,
-    offsetX: 0,
-    offsetY: 0,
-    direction: 0,
-    frame: 0,
+    entity: heroEntity,
     frameTimer: 0,
     speedTilesPerSecond: 7.5
   };
@@ -84,10 +96,17 @@ export function updateHero(
     const normalizedDy = dy / length;
     const stepPixels = (hero.speedPixelsPerSecond ?? hero.speedTilesPerSecond * TILE_SIZE) * deltaSeconds;
 
-    if (normalizedDy > 0) hero.direction = 0;
-    else if (normalizedDy < 0) hero.direction = 3;
-    else if (normalizedDx < 0) hero.direction = 1;
-    else if (normalizedDx > 0) hero.direction = 2;
+    const direction: Direction | null = (() => {
+      if (normalizedDy > 0) return 0;
+      if (normalizedDy < 0) return 3;
+      if (normalizedDx < 0) return 1;
+      if (normalizedDx > 0) return 2;
+      return null;
+    })();
+
+    if (direction !== null) {
+      hero.entity.sprite.direction = direction;
+    }
 
     let currentX = start.x;
     let currentY = start.y;
@@ -105,21 +124,21 @@ export function updateHero(
     const moved = currentX !== start.x || currentY !== start.y;
 
     if (moved) {
-      setHeroPixelPosition(hero, currentX, currentY);
+      setEntityPixelPosition(hero.entity, currentX, currentY);
       hero.frameTimer += deltaMs;
       if (hero.frameTimer >= FRAME_DURATION_MS) {
-        hero.frame = (hero.frame % 2 === 0 ? 1 : 2) as 1 | 2;
+        hero.entity.sprite.frame = hero.entity.sprite.frame % 2 === 0 ? 1 : 2;
         hero.frameTimer = 0;
       }
-      if (hero.frame === 0) {
-        hero.frame = 1;
+      if (hero.entity.sprite.frame === 0) {
+        hero.entity.sprite.frame = 1;
       }
     } else {
-      hero.frame = 0;
+      hero.entity.sprite.frame = 0;
       hero.frameTimer = 0;
     }
   } else {
-    hero.frame = 0;
+    hero.entity.sprite.frame = 0;
     hero.frameTimer = 0;
   }
 }
@@ -130,8 +149,8 @@ export function drawHero(
   hero: HeroState,
   camera: { x: number; y: number }
 ): void {
-  const sx = hero.frame * sheet.tileWidth;
-  const sy = hero.direction * sheet.tileHeight;
+  const sx = hero.entity.sprite.frame * sheet.tileWidth;
+  const sy = hero.entity.sprite.direction * sheet.tileHeight;
   const { x, y } = getHeroPixelPosition(hero);
   const screenX = x - camera.x;
   const screenY = y - camera.y;
@@ -166,34 +185,21 @@ export function drawHero(
 }
 
 export function getHeroPixelPosition(hero: HeroState): { x: number; y: number } {
-  return {
-    x: hero.tileX * TILE_SIZE + hero.offsetX,
-    y: hero.tileY * TILE_SIZE + hero.offsetY
-  };
+  return getEntityPixelPosition(hero.entity);
 }
 
 export function getTileInFront(hero: HeroState): { tileX: number; tileY: number } {
-  const offsets: Record<HeroState['direction'], { dx: number; dy: number }> = {
+  const offsets: Record<Direction, { dx: number; dy: number }> = {
     0: { dx: 0, dy: 1 },
     1: { dx: -1, dy: 0 },
     2: { dx: 1, dy: 0 },
     3: { dx: 0, dy: -1 }
   };
 
-  const { dx, dy } = offsets[hero.direction];
+  const { dx, dy } = offsets[hero.entity.sprite.direction];
 
   return {
-    tileX: hero.tileX + dx,
-    tileY: hero.tileY + dy
+    tileX: hero.entity.position.tileX + dx,
+    tileY: hero.entity.position.tileY + dy
   };
-}
-
-function setHeroPixelPosition(hero: HeroState, x: number, y: number): void {
-  const tileX = Math.floor(x / TILE_SIZE);
-  const tileY = Math.floor(y / TILE_SIZE);
-
-  hero.tileX = tileX;
-  hero.tileY = tileY;
-  hero.offsetX = x - tileX * TILE_SIZE;
-  hero.offsetY = y - tileY * TILE_SIZE;
 }
