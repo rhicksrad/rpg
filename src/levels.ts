@@ -15,7 +15,9 @@ export type LevelData = {
 };
 
 const GRASS_TILES = {
-  grass: 0,
+  grassLight: 0,
+  grassMid: 1,
+  grassDark: 3,
   flower: 2,
   path: 9,
   accent: 24,
@@ -24,15 +26,24 @@ const GRASS_TILES = {
   pit: 27,
   orchard: 29,
   crops: 26,
-  tree: 11
+  tree: 11,
+  shrub: 28
 };
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function createGrid(width: number, height: number, fill: number): number[][] {
-  return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));
+function seededChoice(row: number, col: number, values: number[]): number {
+  const seed = (row * 73856093) ^ (col * 19349663);
+  const index = Math.abs(seed) % values.length;
+  return values[index];
+}
+
+function createGrid(width: number, height: number, grassTiles: number[]): number[][] {
+  return Array.from({ length: height }, (_, row) =>
+    Array.from({ length: width }, (_, col) => seededChoice(row, col, grassTiles))
+  );
 }
 
 function fillRect(
@@ -74,13 +85,33 @@ function scatterDecor(map: number[][]): void {
 
   for (let row = 1; row < rows - 1; row += 1) {
     for (let col = 1; col < cols - 1; col += 1) {
-      if ((row * 3 + col * 7) % 23 === 0) {
+      const checksum = (row * 3 + col * 7) % 97;
+
+      if (checksum === 0) {
         map[row][col] = GRASS_TILES.flower;
-      } else if ((row + col * 11) % 41 === 0) {
+      } else if (checksum === 7 || checksum === 19) {
         map[row][col] = GRASS_TILES.accent;
+      } else if (checksum === 37) {
+        map[row][col] = GRASS_TILES.shrub;
       }
     }
   }
+}
+
+function addGroves(map: number[][], centers: { x: number; y: number; radius: number }[]): void {
+  centers.forEach(({ x, y, radius }) => {
+    for (let row = Math.max(1, y - radius); row <= Math.min(map.length - 2, y + radius); row += 1) {
+      for (let col = Math.max(1, x - radius); col <= Math.min(map[0].length - 2, x + radius); col += 1) {
+        const dx = col - x;
+        const dy = row - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= radius && (dx * 13 + dy * 7) % 5 !== 0) {
+          map[row][col] = dist < radius - 1 ? GRASS_TILES.tree : GRASS_TILES.shrub;
+        }
+      }
+    }
+  });
 }
 
 function carveRiver(map: number[][]): { start: number; end: number }[] {
@@ -177,13 +208,20 @@ function addLakes(map: number[][]): void {
 function createGrasslandLevel(): LevelData {
   const width = 64;
   const height = 48;
-  const map = createGrid(width, height, GRASS_TILES.grass);
+  const map = createGrid(width, height, [GRASS_TILES.grassLight, GRASS_TILES.grassMid, GRASS_TILES.grassDark]);
 
   scatterDecor(map);
   addBorder(map, GRASS_TILES.wall);
 
   const riverSpans = carveRiver(map);
   addBridges(map, riverSpans, [12, 28, 40]);
+
+  addGroves(map, [
+    { x: 6, y: 9, radius: 3 },
+    { x: 24, y: 6, radius: 2 },
+    { x: 48, y: 16, radius: 4 },
+    { x: 14, y: 36, radius: 3 }
+  ]);
 
   const midRow = Math.floor(height / 2);
   drawHorizontalPath(map, midRow, 2, width - 3, GRASS_TILES.path);
