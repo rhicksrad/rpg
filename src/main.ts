@@ -13,30 +13,35 @@ import { createItemEntity, ItemSpawn, pickupNearbyItems } from './items';
 import { createHud, updateHud } from './hud';
 import { queueHeroAttack, updateCombat } from './combat';
 import { createGameState, toggleInventory, togglePause } from './gameState';
+import { QUESTS, createQuestOverlay } from './quests';
 
 const { canvas, ctx } = initializeCanvas('game-canvas');
 const controls: ControlState = setupControls();
 
-async function start() {
-  const assets: Assets = await loadAssets();
-  let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
-  let map = levelTilesToGrid(currentLevel);
-  let hero = createHero(map, assets.hero);
-  let agents: AgentState[] = createLevelAgents(currentLevel, assets);
-  let itemEntities: Entity[] = createLevelItems(currentLevel, assets);
-  let entityRegistry: EntityRegistry = createEntityRegistry([
-    hero.entity,
-    ...agents.map((agent) => agent.entity),
-    ...itemEntities
-  ]);
-  let activeTerrain = assets.terrain[currentLevel.terrain];
-  const gameState = createGameState();
-  const hud = createHud();
-  const camera: Camera = {
-    x: 0,
-    y: 0,
-    width: canvas.width,
-    height: canvas.height
+  async function start() {
+    const assets: Assets = await loadAssets();
+    const gameState = createGameState();
+    const hud = createHud();
+    const questOverlay = createQuestOverlay(QUESTS, () => {
+      gameState.mode = 'playing';
+    });
+    let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
+    let map = levelTilesToGrid(currentLevel);
+    let hero = createHero(map, assets.hero);
+    let agents: AgentState[] = createLevelAgents(currentLevel, assets);
+    attachQuestGiverInteraction(agents, gameState, questOverlay);
+    let itemEntities: Entity[] = createLevelItems(currentLevel, assets);
+    let entityRegistry: EntityRegistry = createEntityRegistry([
+      hero.entity,
+      ...agents.map((agent) => agent.entity),
+      ...itemEntities
+    ]);
+    let activeTerrain = assets.terrain[currentLevel.terrain];
+    const camera: Camera = {
+      x: 0,
+      y: 0,
+      width: canvas.width,
+      height: canvas.height
   };
 
   resizeCanvasToViewport(canvas, camera, map);
@@ -60,6 +65,7 @@ async function start() {
 
   if (app) {
     app.appendChild(hud.container);
+    app.appendChild(questOverlay.container);
   }
 
   loaderSelect.value = currentLevel.id;
@@ -70,6 +76,7 @@ async function start() {
     map = levelTilesToGrid(currentLevel);
     hero = createHero(map, assets.hero);
     agents = createLevelAgents(currentLevel, assets);
+    attachQuestGiverInteraction(agents, gameState, questOverlay);
     itemEntities = createLevelItems(currentLevel, assets);
     entityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity), ...itemEntities]);
     activeTerrain = assets.terrain[currentLevel.terrain];
@@ -94,6 +101,11 @@ async function start() {
     }
 
     if (controls.consumeInteractRequest() || controls.pollGamepadInteract()) {
+      if (gameState.mode === 'dialogue') {
+        questOverlay.close();
+        gameState.mode = 'playing';
+        return;
+      }
       const target: InteractTarget | null = getInteractionTarget(hero, map, entityRegistry);
       interact(target, hero);
     }
@@ -162,6 +174,23 @@ start().catch((err) => {
 function createLevelAgents(level: LevelData, assets: Assets): AgentState[] {
   const spawns = level.spawns ?? [];
   return spawns.map((spawn) => createAgent(spawn, assets.enemies));
+}
+
+function attachQuestGiverInteraction(
+  agents: AgentState[],
+  gameState: ReturnType<typeof createGameState>,
+  questOverlay: ReturnType<typeof createQuestOverlay>
+): void {
+  const questNpc = agents.find((agent) => agent.entity.kind === 'npc' && agent.entity.tags?.includes('quest-giver'));
+  if (!questNpc) return;
+
+  questNpc.entity.components.interactable = {
+    prompt: 'Talk',
+    onInteract: () => {
+      gameState.mode = 'dialogue';
+      questOverlay.open();
+    }
+  };
 }
 
 function createLevelItems(level: LevelData, assets: Assets): Entity[] {

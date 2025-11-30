@@ -28,6 +28,10 @@ body {
   position: relative;
 }
 
+.hidden {
+  display: none !important;
+}
+
 canvas {
   border: 2px solid #f8e473;
   image-rendering: pixelated;
@@ -123,4 +127,99 @@ canvas {
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 6px 8px;
+}
+
+.quest-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+  background: rgba(5, 7, 12, 0.6);
+  z-index: 3;
+}
+
+.quest-panel {
+  max-width: 680px;
+  width: 100%;
+  background: linear-gradient(160deg, #1b1f29, #10131a);
+  border: 2px solid #f8e473;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #fdf8e6;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.quest-heading {
+  border-bottom: 1px solid rgba(248, 228, 115, 0.3);
+  padding-bottom: 8px;
+}
+
+.quest-speaker {
+  color: #f8e473;
+  letter-spacing: 0.05em;
+}
+
+.quest-line {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.quest-explainer {
+  font-size: 12px;
+  color: #cfd3e0;
+}
+
+.quest-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.quest-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(248, 228, 115, 0.35);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quest-card h3 {
+  color: #ffe799;
+  font-size: 13px;
+}
+
+.quest-location {
+  font-size: 11px;
+  color: #9fb3d2;
+}
+
+.quest-reward {
+  font-size: 11px;
+  color: #c6f6d5;
+}
+
+.quest-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.quest-footer button {
+  background: #f8e473;
+  color: #0d0f15;
+  border: 0;
+  padding: 8px 12px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.quest-footer button:hover {
+  background: #ffe799;
 }
