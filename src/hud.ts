@@ -11,6 +11,13 @@ export function createHud(): HudElements {
   const container = document.createElement('div');
   container.className = 'hud-overlay';
 
+  const panel = document.createElement('div');
+  panel.className = 'hud-panel';
+
+  const statusHeader = document.createElement('div');
+  statusHeader.className = 'hud-section-title';
+  statusHeader.textContent = 'Status';
+
   const hpBar = document.createElement('div');
   hpBar.className = 'hud-bar hp';
 
@@ -18,15 +25,22 @@ export function createHud(): HudElements {
   xpBar.className = 'hud-bar xp';
 
   const barWrapper = document.createElement('div');
-  barWrapper.className = 'hud-bars';
+  barWrapper.className = 'hud-row hud-bars';
   barWrapper.appendChild(hpBar);
   barWrapper.appendChild(xpBar);
+
+  const inventoryHeader = document.createElement('div');
+  inventoryHeader.className = 'hud-section-title';
+  inventoryHeader.textContent = 'Inventory';
 
   const inventory = document.createElement('div');
   inventory.className = 'hud-inventory';
 
-  container.appendChild(barWrapper);
-  container.appendChild(inventory);
+  panel.appendChild(statusHeader);
+  panel.appendChild(barWrapper);
+  panel.appendChild(inventoryHeader);
+  panel.appendChild(inventory);
+  container.appendChild(panel);
 
   return {
     container,

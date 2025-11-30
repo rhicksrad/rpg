@@ -78,21 +78,43 @@ canvas {
 
 .hud-overlay {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  justify-content: center;
   color: #f7f7f7;
   text-shadow: 1px 1px 0 #000;
   font-size: 12px;
   pointer-events: none;
+  z-index: 1;
+}
+
+.hud-panel {
+  width: min(980px, 100%);
+  background: rgba(10, 12, 18, 0.8);
+  border: 2px solid rgba(248, 228, 115, 0.65);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.hud-section-title {
+  letter-spacing: 0.08em;
+  color: #ffe799;
+}
+
+.hud-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
 }
 
 .hud-bars {
-  display: flex;
-  gap: 6px;
+  align-items: stretch;
 }
 
 .hud-bar {
