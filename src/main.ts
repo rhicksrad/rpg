@@ -5,9 +5,9 @@ import { ControlState, setupControls } from './controls';
 import { HeroState, createHero, drawHero, getHeroPixelPosition, respawnHero, updateHero } from './hero';
 import { Entity, EntityRegistry, EntityWithComponent, createEntityRegistry } from './entities';
 import { InteractTarget, getInteractionTarget, interact } from './interactions';
-import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
-import { Camera, drawTileMap } from './renderTiles';
-import { createLevelLoader, levelTilesToGrid } from './levelLoader';
+import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData, LevelLayer } from './levels';
+import { Camera, drawTileLayers } from './renderTiles';
+import { createLevelLoader, tilesToGrid } from './levelLoader';
 import { AgentState, createAgent, drawAgents, updateAgents } from './agents';
 import { createItemEntity, ItemSpawn, pickupNearbyItems } from './items';
 import { createHud, updateHud } from './hud';
@@ -28,8 +28,12 @@ async function start() {
       gameState.mode = 'playing';
     });
     let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
-    let map = levelTilesToGrid(currentLevel);
+    let layers = resolveLevelLayers(currentLevel);
+    let map = composeCollisionMap(layers, currentLevel.width, currentLevel.height);
+    let renderLayers = buildRenderLayers(layers, assets, currentLevel.width, currentLevel.height);
+    let explored = createExploredGrid(currentLevel.width, currentLevel.height);
     let hero = createHero(map, assets.hero);
+    revealExplored(explored, hero, 9, 4);
     let agents: AgentState[] = createLevelAgents(currentLevel, assets);
     attachQuestGiverInteraction(agents, gameState, questOverlay);
     let itemEntities: Entity[] = createLevelItems(currentLevel, assets);
@@ -38,7 +42,6 @@ async function start() {
       ...agents.map((agent) => agent.entity),
       ...itemEntities
     ]);
-    let activeTerrain = assets.terrain[currentLevel.terrain];
     let hazardTimers: Record<string, number> = {};
     const camera: Camera = {
       x: 0,
@@ -76,13 +79,15 @@ async function start() {
     function loadLevel(levelId: string) {
       const nextLevel = LEVELS_BY_ID[levelId] ?? LEVELS_BY_ID[DEFAULT_LEVEL_ID];
       currentLevel = nextLevel;
-      map = levelTilesToGrid(currentLevel);
+      layers = resolveLevelLayers(currentLevel);
+      map = composeCollisionMap(layers, currentLevel.width, currentLevel.height);
+      renderLayers = buildRenderLayers(layers, assets, currentLevel.width, currentLevel.height);
+      explored = createExploredGrid(currentLevel.width, currentLevel.height);
       hero = createHero(map, assets.hero);
       agents = createLevelAgents(currentLevel, assets);
       attachQuestGiverInteraction(agents, gameState, questOverlay);
       itemEntities = createLevelItems(currentLevel, assets);
       entityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity), ...itemEntities]);
-      activeTerrain = assets.terrain[currentLevel.terrain];
       hazardTimers = {};
       camera.x = 0;
       camera.y = 0;
@@ -125,6 +130,7 @@ async function start() {
       updateAgents(agents, hero, deltaMs, map, collidables);
       updateCombat(hero, agents, entityRegistry, deltaMs);
       applyLevelHazards(deltaMs);
+      revealExplored(explored, hero, 9, 4);
       agents = agents.filter((agent) => agent.isAlive);
 
       if (hero.hurtCooldownMs && hero.hurtCooldownMs > 0) {
@@ -178,10 +184,11 @@ async function start() {
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawTileMap(ctx, activeTerrain, map, camera);
+    drawTileLayers(ctx, renderLayers, camera);
     drawItems(ctx, assets.items, itemEntities, camera);
     drawAgents(ctx, assets.enemies, agents, camera);
     drawHero(ctx, assets.hero, hero, camera);
+    drawFogOfWar(ctx, camera, explored, hero);
   }
 
   function gameLoop(timestamp: number) {
@@ -210,6 +217,95 @@ async function start() {
 start().catch((err) => {
   console.error('Failed to start game', err);
 });
+
+function resolveLevelLayers(level: LevelData): LevelLayer[] {
+  if (level.layers && level.layers.length > 0) return level.layers;
+  return [{ terrain: level.terrain, tiles: level.tiles }];
+}
+
+function buildRenderLayers(
+  layers: LevelLayer[],
+  assets: Assets,
+  width: number,
+  height: number
+): { sheet: Assets['terrain'][keyof Assets['terrain']]; map: number[][] }[] {
+  return layers.map((layer) => ({
+    sheet: assets.terrain[layer.terrain],
+    map: tilesToGrid(layer.tiles, width, height)
+  }));
+}
+
+function composeCollisionMap(layers: LevelLayer[], width: number, height: number): number[][] {
+  if (!layers.length) return [];
+  const base = tilesToGrid(layers[0].tiles, width, height);
+  const collisionMap = base.map((row) => [...row]);
+
+  for (let i = 1; i < layers.length; i += 1) {
+    const overlay = tilesToGrid(layers[i].tiles, width, height);
+    for (let row = 0; row < height; row += 1) {
+      for (let col = 0; col < width; col += 1) {
+        if (overlay[row][col] >= 0) {
+          collisionMap[row][col] = overlay[row][col];
+        }
+      }
+    }
+  }
+
+  return collisionMap;
+}
+
+function createExploredGrid(width: number, height: number): boolean[][] {
+  return Array.from({ length: height }, () => Array.from({ length: width }, () => false));
+}
+
+function revealExplored(explored: boolean[][], hero: HeroState, radius: number, softEdge: number): void {
+  const { tileX, tileY } = hero.entity.position;
+  const startRow = Math.max(tileY - radius, 0);
+  const endRow = Math.min(tileY + radius, explored.length - 1);
+  const startCol = Math.max(tileX - radius, 0);
+  const endCol = Math.min(tileX + radius, explored[0].length - 1);
+
+  for (let row = startRow; row <= endRow; row += 1) {
+    for (let col = startCol; col <= endCol; col += 1) {
+      const distance = Math.hypot(col - tileX, row - tileY);
+      if (distance <= radius + softEdge) {
+        explored[row][col] = true;
+      }
+    }
+  }
+}
+
+function drawFogOfWar(
+  ctx: CanvasRenderingContext2D,
+  camera: Camera,
+  explored: boolean[][],
+  hero: HeroState
+): void {
+  const startCol = Math.max(Math.floor(camera.x / TILE_SIZE), 0);
+  const endCol = Math.min(Math.ceil((camera.x + camera.width) / TILE_SIZE), explored[0].length);
+  const startRow = Math.max(Math.floor(camera.y / TILE_SIZE), 0);
+  const endRow = Math.min(Math.ceil((camera.y + camera.height) / TILE_SIZE), explored.length);
+
+  const { tileX, tileY } = hero.entity.position;
+  const visibility = 8;
+  const softEdge = 4;
+  ctx.save();
+  for (let row = startRow; row < endRow; row += 1) {
+    for (let col = startCol; col < endCol; col += 1) {
+      const distance = Math.hypot(col - tileX, row - tileY);
+      let alpha = explored[row][col] ? 0.4 : 0.78;
+      if (distance < visibility) {
+        const falloff = Math.max(distance - (visibility - softEdge), 0) / softEdge;
+        alpha = Math.min(alpha, falloff * 0.8);
+      }
+      if (alpha <= 0) continue;
+
+      ctx.fillStyle = `rgba(5, 8, 12, ${alpha.toFixed(2)})`;
+      ctx.fillRect(col * TILE_SIZE - camera.x, row * TILE_SIZE - camera.y, TILE_SIZE, TILE_SIZE);
+    }
+  }
+  ctx.restore();
+}
 
 function createLevelAgents(level: LevelData, assets: Assets): AgentState[] {
   const spawns = level.spawns ?? [];

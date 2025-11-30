@@ -1,18 +1,22 @@
 import type { LevelData } from './levels';
 
-export function levelTilesToGrid(level: LevelData): number[][] {
-  if (level.tiles.length !== level.width * level.height) {
-    throw new Error(`Level ${level.id} tile data is inconsistent with dimensions`);
+export function tilesToGrid(tiles: number[], width: number, height: number): number[][] {
+  if (tiles.length !== width * height) {
+    throw new Error(`Tile data is inconsistent with dimensions ${width}x${height}`);
   }
 
   const grid: number[][] = [];
 
-  for (let row = 0; row < level.height; row += 1) {
-    const start = row * level.width;
-    grid.push(level.tiles.slice(start, start + level.width));
+  for (let row = 0; row < height; row += 1) {
+    const start = row * width;
+    grid.push(tiles.slice(start, start + width));
   }
 
   return grid;
+}
+
+export function levelTilesToGrid(level: LevelData): number[][] {
+  return tilesToGrid(level.tiles, level.width, level.height);
 }
 
 export function createLevelLoader(
