@@ -36,16 +36,30 @@ function createMap(): number[][] {
   const centerCol = Math.floor(cols / 2);
   const centerRow = Math.floor(rows / 2);
 
+  const wallTileIndex = 18;
+  const waterTileIndex = 22;
+  const pitTileIndex = 27;
+
   const map: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
-      if (row === centerRow || col === centerCol) {
+      const isBorder = row === 0 || col === 0 || row === rows - 1 || col === cols - 1;
+      const isMainPath = row === centerRow || col === centerCol;
+      const isAccent = (row + col) % 11 === 0;
+      const isWater = row >= Math.floor(rows / 3) && row <= Math.floor(rows / 3) + 1 && col >= 2 && col <= 4;
+      const isPit = row >= Math.floor((rows * 2) / 3) && row <= Math.floor((rows * 2) / 3) + 1 && col >= cols - 6 && col <= cols - 4;
+
+      if (isBorder) {
+        map[row][col] = wallTileIndex;
+      } else if (isWater) {
+        map[row][col] = waterTileIndex;
+      } else if (isPit) {
+        map[row][col] = pitTileIndex;
+      } else if (isMainPath) {
         map[row][col] = 9; // path tile
-      } else if ((row + col) % 11 === 0) {
+      } else if (isAccent) {
         map[row][col] = 2; // accent tile
-      } else {
-        map[row][col] = 0; // base grass tile
       }
     }
   }
@@ -64,7 +78,7 @@ async function start() {
     const deltaMs = timestamp - lastTime;
     lastTime = timestamp;
 
-    updateHero(hero, keys, deltaMs, canvas);
+    updateHero(hero, keys, deltaMs, map);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawTileMap(ctx, assets.terrain.grass, map);

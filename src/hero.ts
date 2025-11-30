@@ -1,4 +1,5 @@
 import { SpriteSheet, TILE_SIZE } from './assets';
+import { isTileCollidable } from './tiles';
 
 export type HeroState = {
   x: number;
@@ -26,8 +27,10 @@ export function updateHero(
   hero: HeroState,
   keys: Record<string, boolean>,
   deltaMs: number,
-  canvas: HTMLCanvasElement
+  map: number[][]
 ): void {
+  const startX = hero.x;
+  const startY = hero.y;
   const deltaSeconds = deltaMs / 1000;
   let dx = 0;
   let dy = 0;
@@ -42,39 +45,72 @@ export function updateHero(
   if (left) dx -= 1;
   if (right) dx += 1;
 
-  const isMoving = dx !== 0 || dy !== 0;
+  const inputIsActive = dx !== 0 || dy !== 0;
 
-  if (isMoving) {
-    const length = Math.hypot(dx, dy) || 1;
-    dx /= length;
-    dy /= length;
+  const mapWidth = map[0].length * TILE_SIZE;
+  const mapHeight = map.length * TILE_SIZE;
 
-    hero.x += dx * hero.speed * deltaSeconds;
-    hero.y += dy * hero.speed * deltaSeconds;
-
-    if (dy > 0) hero.direction = 0;
-    else if (dy < 0) hero.direction = 3;
-    else if (dx < 0) hero.direction = 1;
-    else if (dx > 0) hero.direction = 2;
-
-    hero.frameTimer += deltaMs;
-    if (hero.frameTimer >= FRAME_DURATION_MS) {
-      hero.frame = (hero.frame % 2 === 0 ? 1 : 2) as 1 | 2;
-      hero.frameTimer = 0;
+  const isCollidingWithMap = (x: number, y: number): boolean => {
+    if (x < 0 || y < 0 || x + TILE_SIZE > mapWidth || y + TILE_SIZE > mapHeight) {
+      return true;
     }
-    if (hero.frame === 0) {
-      hero.frame = 1;
+
+    const minCol = Math.floor(x / TILE_SIZE);
+    const maxCol = Math.floor((x + TILE_SIZE - 1) / TILE_SIZE);
+    const minRow = Math.floor(y / TILE_SIZE);
+    const maxRow = Math.floor((y + TILE_SIZE - 1) / TILE_SIZE);
+
+    for (let row = minRow; row <= maxRow; row += 1) {
+      for (let col = minCol; col <= maxCol; col += 1) {
+        if (isTileCollidable(map[row][col])) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  if (inputIsActive) {
+    const length = Math.hypot(dx, dy) || 1;
+    const normalizedDx = dx / length;
+    const normalizedDy = dy / length;
+    const step = hero.speed * deltaSeconds;
+
+    if (normalizedDy > 0) hero.direction = 0;
+    else if (normalizedDy < 0) hero.direction = 3;
+    else if (normalizedDx < 0) hero.direction = 1;
+    else if (normalizedDx > 0) hero.direction = 2;
+
+    const attemptedX = startX + normalizedDx * step;
+    if (!isCollidingWithMap(attemptedX, startY)) {
+      hero.x = attemptedX;
+    }
+
+    const attemptedY = startY + normalizedDy * step;
+    if (!isCollidingWithMap(hero.x, attemptedY)) {
+      hero.y = attemptedY;
+    }
+
+    const moved = hero.x !== startX || hero.y !== startY;
+
+    if (moved) {
+      hero.frameTimer += deltaMs;
+      if (hero.frameTimer >= FRAME_DURATION_MS) {
+        hero.frame = (hero.frame % 2 === 0 ? 1 : 2) as 1 | 2;
+        hero.frameTimer = 0;
+      }
+      if (hero.frame === 0) {
+        hero.frame = 1;
+      }
+    } else {
+      hero.frame = 0;
+      hero.frameTimer = 0;
     }
   } else {
     hero.frame = 0;
     hero.frameTimer = 0;
   }
-
-  const maxX = canvas.width - TILE_SIZE;
-  const maxY = canvas.height - TILE_SIZE;
-
-  hero.x = Math.min(Math.max(hero.x, 0), maxX);
-  hero.y = Math.min(Math.max(hero.y, 0), maxY);
 }
 
 export function drawHero(
