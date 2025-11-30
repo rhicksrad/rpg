@@ -16,32 +16,32 @@ export type LevelData = {
   items?: ItemSpawn[];
 };
 
-const GRASS_TILES = {
-  grassLight: 0,
-  grassDark: 1,
-  sand: 2,
-  sandGrass: 3,
-  dirt: 4,
-  water: 5,
-  borderedGrass: 6,
-  sandGrassAlt: 7,
-  path: 8,
-  dirtGrass: 9,
-  bush: 10,
-  bushAlt: 11,
-  tree: 12,
-  pathAlt: 13,
-  sandGrassBlend: 14,
-  rock: 15,
-  rockAlt: 16,
-  rockCluster: 17,
-  rockWide: 18,
-  rockTall: 19,
-  treeAlt: 20,
-  treeDense: 21,
-  fence: 22,
-  shrub: 23,
-  chest: 24
+const VILLAGE_TILES = {
+  woodWallH: 0,
+  woodWallV: 1,
+  brick: 2,
+  altBrick: 3,
+  stoneWall: 4,
+  door: 5,
+  doorAlt: 6,
+  window: 7,
+  fence: 8,
+  sign: 9,
+  barrel: 10,
+  bush: 11,
+  grass: 12,
+  dirt: 13,
+  gravel: 14,
+  pathEdgeH: 15,
+  pathEdgeV: 16,
+  floorboards: 17,
+  foundation: 18,
+  darkBrick: 19,
+  grassAlt: 20,
+  dirtPacked: 21,
+  barrelStack: 22,
+  bushAlt: 23,
+  well: 24
 };
 
 function fillRect(
@@ -74,151 +74,145 @@ function drawVerticalPath(map: number[][], col: number, start: number, end: numb
   }
 }
 
-function createGrassBase(width: number, height: number): number[][] {
-  const grassVariants = [GRASS_TILES.grassLight, GRASS_TILES.grassDark, GRASS_TILES.borderedGrass];
+function createVillageBase(width: number, height: number): number[][] {
+  const grassVariants = [VILLAGE_TILES.grass, VILLAGE_TILES.grassAlt];
+  const dirtVariants = [VILLAGE_TILES.dirt, VILLAGE_TILES.dirtPacked];
 
   return Array.from({ length: height }, (_, row) =>
-    Array.from({ length: width }, (_, col) => grassVariants[(row + col * 2) % grassVariants.length])
+    Array.from({ length: width }, (_, col) => {
+      const noise = (row * 13 + col * 7) % 10;
+      if (noise === 0) {
+        return dirtVariants[(row + col) % dirtVariants.length];
+      }
+      return grassVariants[(row + col) % grassVariants.length];
+    })
   );
 }
 
-function placePerimeterTrees(map: number[][]): void {
-  const rows = map.length;
+function addPathCross(map: number[][], midRow: number, midCol: number): void {
   const cols = map[0].length;
-  const treeVariants = [GRASS_TILES.tree, GRASS_TILES.treeAlt, GRASS_TILES.treeDense];
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const isEdge = row === 0 || col === 0 || row === rows - 1 || col === cols - 1;
-      const isInnerRing = row === 1 || col === 1 || row === rows - 2 || col === cols - 2;
-
-      if (isEdge || (isInnerRing && (row + col) % 3 !== 0)) {
-        map[row][col] = treeVariants[(row + col) % treeVariants.length];
-      }
-    }
-  }
-}
-
-function addWaterFeature(map: number[][], startX: number, startY: number, width: number, height: number): void {
-  fillRect(map, startX, startY, width, height, GRASS_TILES.water);
-  fillRect(map, startX - 1, startY + 1, width + 2, 1, GRASS_TILES.sandGrassBlend);
-  fillRect(map, startX + 1, startY + height, width - 2, 1, GRASS_TILES.sandGrass);
-}
-
-function addRiverWithBridges(map: number[][]): void {
   const rows = map.length;
-  const riverStartX = 10;
-  let riverX = riverStartX;
 
-  for (let row = 3; row < rows - 3; row += 1) {
-    const bend = row % 9 === 0 ? -1 : row % 7 === 0 ? 1 : 0;
-    riverX = Math.max(8, Math.min(riverX + bend, 14));
+  drawHorizontalPath(map, midRow, 2, cols - 3, VILLAGE_TILES.gravel);
+  drawHorizontalPath(map, midRow - 1, 2, cols - 3, VILLAGE_TILES.pathEdgeH);
+  drawHorizontalPath(map, midRow + 1, 2, cols - 3, VILLAGE_TILES.pathEdgeH);
 
-    fillRect(map, riverX, row, 4, 1, GRASS_TILES.water);
-    map[row][riverX - 1] = GRASS_TILES.sandGrassAlt;
-    map[row][riverX + 4] = GRASS_TILES.sandGrass;
-  }
-
-  const bridges = [18, 30];
-  bridges.forEach((bridgeRow) => {
-    for (let col = riverStartX - 1; col <= riverStartX + 5; col += 1) {
-      map[bridgeRow][col] = GRASS_TILES.path;
-    }
-  });
+  drawVerticalPath(map, midCol, 2, rows - 3, VILLAGE_TILES.gravel);
+  drawVerticalPath(map, midCol - 1, 2, rows - 3, VILLAGE_TILES.pathEdgeV);
+  drawVerticalPath(map, midCol + 1, 2, rows - 3, VILLAGE_TILES.pathEdgeV);
 }
 
-function addRockGarden(map: number[][], startX: number, startY: number, width: number, height: number): void {
+function addPlaza(map: number[][], midRow: number, midCol: number): void {
+  fillRect(map, midCol - 7, midRow - 6, 15, 13, VILLAGE_TILES.dirtPacked);
+  fillRect(map, midCol - 6, midRow - 5, 13, 11, VILLAGE_TILES.gravel);
+  map[midRow - 1][midCol + 1] = VILLAGE_TILES.well;
+  map[midRow + 2][midCol - 2] = VILLAGE_TILES.sign;
+}
+
+function addBuilding(
+  map: number[][],
+  startX: number,
+  startY: number,
+  width: number,
+  height: number,
+  doorOffset = 0,
+  style: 'wood' | 'brick' = 'wood'
+): void {
+  const horizontalWall = style === 'wood' ? VILLAGE_TILES.woodWallH : VILLAGE_TILES.darkBrick;
+  const verticalWall = style === 'wood' ? VILLAGE_TILES.woodWallV : VILLAGE_TILES.brick;
+
+  fillRect(map, startX + 1, startY + 1, width - 2, height - 2, VILLAGE_TILES.floorboards);
+
+  for (let col = startX; col < startX + width; col += 1) {
+    map[startY][col] = horizontalWall;
+    map[startY + height - 1][col] = horizontalWall;
+  }
+
   for (let row = startY; row < startY + height; row += 1) {
-    for (let col = startX; col < startX + width; col += 1) {
-      const checker = (row + col) % 4;
-      if (checker === 0) map[row][col] = GRASS_TILES.rock;
-      if (checker === 1) map[row][col] = GRASS_TILES.rockAlt;
-      if (checker === 2) map[row][col] = GRASS_TILES.rockCluster;
-    }
+    map[row][startX] = verticalWall;
+    map[row][startX + width - 1] = verticalWall;
   }
-}
 
-function addTownBuilding(map: number[][], startX: number, startY: number, width: number, height: number, doorOffset = 0): void {
-  const wallTile = GRASS_TILES.rockWide;
-  fillRect(map, startX, startY, width, height, GRASS_TILES.dirtGrass);
-  fillRect(map, startX, startY, width, 1, wallTile);
-  fillRect(map, startX, startY + height - 1, width, 1, wallTile);
-  fillRect(map, startX, startY, 1, height, wallTile);
-  fillRect(map, startX + width - 1, startY, 1, height, wallTile);
+  map[startY][startX] = VILLAGE_TILES.foundation;
+  map[startY][startX + width - 1] = VILLAGE_TILES.foundation;
+  map[startY + height - 1][startX] = VILLAGE_TILES.foundation;
+  map[startY + height - 1][startX + width - 1] = VILLAGE_TILES.foundation;
 
   const doorX = startX + Math.floor(width / 2) + doorOffset;
   const doorY = startY + height - 1;
-  map[doorY][doorX] = GRASS_TILES.path;
-  map[doorY - 1][doorX] = GRASS_TILES.path;
+  map[doorY][doorX] = VILLAGE_TILES.door;
+
+  if (width > 4) {
+    map[startY][startX + 2] = VILLAGE_TILES.window;
+    map[startY][startX + width - 3] = VILLAGE_TILES.window;
+  }
 }
 
-function addOrchard(map: number[][], startX: number, startY: number, rows: number, cols: number): void {
-  const spacing = 3;
-  for (let r = 0; r < rows; r += 1) {
-    for (let c = 0; c < cols; c += 1) {
-      const x = startX + c * spacing;
-      const y = startY + r * spacing;
-      map[y][x] = (r + c) % 2 === 0 ? GRASS_TILES.tree : GRASS_TILES.treeAlt;
-      map[y + 1][x] = GRASS_TILES.shrub;
+function addFencedGarden(
+  map: number[][],
+  startX: number,
+  startY: number,
+  width: number,
+  height: number,
+  gateOffset = 0
+): void {
+  fillRect(map, startX + 1, startY + 1, width - 2, height - 2, VILLAGE_TILES.dirt);
+
+  for (let col = startX; col < startX + width; col += 1) {
+    map[startY][col] = VILLAGE_TILES.fence;
+    map[startY + height - 1][col] = VILLAGE_TILES.fence;
+  }
+
+  for (let row = startY; row < startY + height; row += 1) {
+    map[row][startX] = VILLAGE_TILES.fence;
+    map[row][startX + width - 1] = VILLAGE_TILES.fence;
+  }
+
+  const gateX = startX + Math.floor(width / 2) + gateOffset;
+  map[startY + height - 1][gateX] = VILLAGE_TILES.doorAlt;
+}
+
+function scatterVillageDetails(map: number[][], midRow: number, midCol: number): void {
+  const rows = map.length;
+  const cols = map[0].length;
+
+  for (let row = 2; row < rows - 2; row += 7) {
+    for (let col = 4; col < cols - 4; col += 9) {
+      const nearMainRoad = Math.abs(row - midRow) <= 2 || Math.abs(col - midCol) <= 2;
+      if (nearMainRoad) continue;
+      if ((row + col) % 3 === 0) {
+        map[row][col] = VILLAGE_TILES.bush;
+      } else if ((row + col) % 4 === 0) {
+        map[row][col] = VILLAGE_TILES.barrel;
+      }
     }
   }
-}
 
-function addFields(map: number[][], startX: number, startY: number, width: number, height: number): void {
-  for (let row = 0; row < height; row += 1) {
-    const tile = row % 2 === 0 ? GRASS_TILES.dirt : GRASS_TILES.dirtGrass;
-    drawHorizontalPath(map, startY + row, startX, startX + width - 1, tile);
-  }
+  map[rows - 6][cols - 8] = VILLAGE_TILES.barrelStack;
+  map[rows - 7][cols - 9] = VILLAGE_TILES.bushAlt;
 }
 
 function createGrasslandLevel(): LevelData {
   const width = 64;
   const height = 48;
-  const map = createGrassBase(width, height);
+  const map = createVillageBase(width, height);
 
-  placePerimeterTrees(map);
-  addRiverWithBridges(map);
-  addWaterFeature(map, width - 16, 6, 9, 6);
-  addWaterFeature(map, 6, height - 14, 7, 5);
-
-  // Main roads linking the plaza to every edge
   const midRow = Math.floor(height / 2);
   const midCol = Math.floor(width / 2);
-  drawHorizontalPath(map, midRow, 6, width - 7, GRASS_TILES.path);
-  drawHorizontalPath(map, midRow + 1, 6, width - 7, GRASS_TILES.dirtGrass);
-  drawVerticalPath(map, midCol, 6, height - 7, GRASS_TILES.path);
-  drawVerticalPath(map, midCol + 1, 6, height - 7, GRASS_TILES.dirt);
 
-  // Plaza and quest center
-  fillRect(map, midCol - 7, midRow - 6, 15, 13, GRASS_TILES.dirtGrass);
-  fillRect(map, midCol - 6, midRow - 5, 13, 11, GRASS_TILES.path);
-  addTownBuilding(map, midCol - 4, midRow - 8, 9, 6);
-  addTownBuilding(map, midCol - 13, midRow - 2, 8, 6, -1);
-  addTownBuilding(map, midCol + 6, midRow - 2, 8, 6, 1);
+  addPathCross(map, midRow, midCol);
+  addPlaza(map, midRow, midCol);
 
-  // Market stalls and notice board
-  map[midRow][midCol] = GRASS_TILES.chest;
-  map[midRow - 1][midCol - 2] = GRASS_TILES.bush;
-  map[midRow - 1][midCol + 2] = GRASS_TILES.bushAlt;
+  addBuilding(map, midCol - 12, midRow - 11, 10, 8, 0, 'wood');
+  addBuilding(map, midCol + 4, midRow - 12, 9, 8, 0, 'brick');
+  addBuilding(map, midCol - 18, midRow + 2, 11, 8, 1, 'brick');
+  addBuilding(map, midCol + 8, midRow + 3, 10, 8, -1, 'wood');
 
-  // Agricultural belt south of town
-  addFields(map, midCol - 12, midRow + 6, 24, 8);
-  addOrchard(map, midCol + 14, midRow + 7, 3, 3);
-  addOrchard(map, midCol - 20, midRow + 7, 3, 3);
+  addFencedGarden(map, midCol - 22, midRow + 12, 12, 8, -1);
+  addFencedGarden(map, midCol + 12, midRow + 13, 11, 8, 1);
+  fillRect(map, midCol - 4, midRow + 13, 8, 6, VILLAGE_TILES.dirtPacked);
 
-  // Training yard and ruins to explore
-  fillRect(map, midCol + 15, midRow - 10, 12, 8, GRASS_TILES.sandGrass);
-  addRockGarden(map, midCol + 15, midRow - 10, 12, 8);
-  fillRect(map, midCol - 25, midRow - 14, 10, 6, GRASS_TILES.sandGrassBlend);
-  addRockGarden(map, midCol - 25, midRow - 14, 10, 6);
-
-  // Wild groves guarding the outskirts
-  addOrchard(map, 20, 8, 2, 3);
-  addOrchard(map, width - 26, 10, 2, 3);
-
-  // Reinforce the river banks with footpaths
-  drawHorizontalPath(map, 18, 6, 18, GRASS_TILES.path);
-  drawHorizontalPath(map, 30, 6, 18, GRASS_TILES.path);
+  scatterVillageDetails(map, midRow, midCol);
 
   const spawns: AgentSpawn[] = [
     {
@@ -263,8 +257,8 @@ function createGrasslandLevel(): LevelData {
   ];
 
   const items: ItemSpawn[] = [
-    { itemId: 'coin', tileX: midCol, tileY: midRow },
-    { itemId: 'heart', tileX: midCol + 3, tileY: midRow + 2 },
+    { itemId: 'coin', tileX: midCol, tileY: midRow + 2 },
+    { itemId: 'heart', tileX: midCol + 3, tileY: midRow + 3 },
     { itemId: 'sword', tileX: midCol - 6, tileY: midRow - 4 }
   ];
 
@@ -348,8 +342,8 @@ const castleLevel: LevelData = {
     pathTile: 5,
     accentTile: 7,
     borderTile: 30,
-    waterTile: 20,
-    pitTile: 23
+    waterTile: 25,
+    pitTile: 26
   }),
   spawns: [
     {
