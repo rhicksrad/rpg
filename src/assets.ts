@@ -58,10 +58,10 @@ export async function loadAssets(): Promise<Assets> {
     terrain: {
       grass: {
         image: grassImage,
-        tileWidth: TILE_SIZE,
-        tileHeight: TILE_SIZE,
-        columns: 8,
-        rows: 4
+        tileWidth: grassImage.width / 5,
+        tileHeight: grassImage.height / 5,
+        columns: 5,
+        rows: 5
       },
       castle: {
         image: castleImage,
