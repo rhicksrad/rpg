@@ -62,15 +62,14 @@ async function start() {
       }
     );
 
-    const app = document.getElementById('app');
-    if (app && app.firstChild) {
-      app.insertBefore(loaderContainer, app.firstChild);
-    } else if (app) {
-      app.appendChild(loaderContainer);
-    }
+    const topUi = document.createElement('div');
+    topUi.className = 'top-ui';
+    topUi.appendChild(loaderContainer);
+    topUi.appendChild(hud.container);
 
+    const app = document.getElementById('app');
     if (app) {
-      app.appendChild(hud.container);
+      app.appendChild(topUi);
       app.appendChild(questOverlay.container);
     }
 
