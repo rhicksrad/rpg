@@ -70,7 +70,7 @@ function createMap(): number[][] {
 async function start() {
   const assets: Assets = await loadAssets();
   const map = createMap();
-  const hero = createHero(canvas);
+  const hero = createHero(map);
 
   let lastTime = performance.now();
 
