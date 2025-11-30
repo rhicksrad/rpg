@@ -1,9 +1,7 @@
 import './style.css';
-
-type Vector = {
-  x: number;
-  y: number;
-};
+import { Assets, TILE_SIZE, loadAssets } from './assets';
+import { createHero, drawHero, updateHero } from './hero';
+import { drawTileMap } from './renderTiles';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 
@@ -17,76 +15,67 @@ if (!ctx) {
   throw new Error('Unable to acquire 2D context');
 }
 
-const player = {
-  position: { x: canvas.width / 2, y: canvas.height / 2 } as Vector,
-  radius: 10,
-  speed: 200 // pixels per second
-};
-
-const keys = new Set<string>();
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
+const keys: Record<string, boolean> = {};
 
 window.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
-    keys.add(key);
+    keys[key] = true;
     event.preventDefault();
   }
 });
 
 window.addEventListener('keyup', (event) => {
-  keys.delete(event.key.toLowerCase());
+  const key = event.key.toLowerCase();
+  delete keys[key];
 });
 
-let lastTime = performance.now();
+function createMap(): number[][] {
+  const cols = Math.ceil(canvas.width / TILE_SIZE);
+  const rows = Math.ceil(canvas.height / TILE_SIZE);
+  const centerCol = Math.floor(cols / 2);
+  const centerRow = Math.floor(rows / 2);
 
-function update(deltaTime: number) {
-  const delta = deltaTime / 1000;
-  let dx = 0;
-  let dy = 0;
+  const map: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
 
-  if (keys.has('arrowup') || keys.has('w')) dy -= 1;
-  if (keys.has('arrowdown') || keys.has('s')) dy += 1;
-  if (keys.has('arrowleft') || keys.has('a')) dx -= 1;
-  if (keys.has('arrowright') || keys.has('d')) dx += 1;
-
-  if (dx !== 0 || dy !== 0) {
-    const length = Math.hypot(dx, dy) || 1;
-    dx /= length;
-    dy /= length;
-    player.position.x += dx * player.speed * delta;
-    player.position.y += dy * player.speed * delta;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (row === centerRow || col === centerCol) {
+        map[row][col] = 9; // path tile
+      } else if ((row + col) % 11 === 0) {
+        map[row][col] = 2; // accent tile
+      } else {
+        map[row][col] = 0; // base grass tile
+      }
+    }
   }
 
-  const minX = player.radius;
-  const minY = player.radius;
-  const maxX = canvas.width - player.radius;
-  const maxY = canvas.height - player.radius;
-
-  player.position.x = clamp(player.position.x, minX, maxX);
-  player.position.y = clamp(player.position.y, minY, maxY);
+  return map;
 }
 
-function render() {
-  ctx.fillStyle = '#0f1115';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+async function start() {
+  const assets: Assets = await loadAssets();
+  const map = createMap();
+  const hero = createHero(canvas);
 
-  ctx.fillStyle = '#f8e473';
-  ctx.beginPath();
-  ctx.arc(player.position.x, player.position.y, player.radius, 0, Math.PI * 2);
-  ctx.fill();
-}
+  let lastTime = performance.now();
 
-function gameLoop(timestamp: number) {
-  const deltaTime = timestamp - lastTime;
-  lastTime = timestamp;
+  function gameLoop(timestamp: number) {
+    const deltaMs = timestamp - lastTime;
+    lastTime = timestamp;
 
-  update(deltaTime);
-  render();
+    updateHero(hero, keys, deltaMs, canvas);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawTileMap(ctx, assets.terrain.grass, map);
+    drawHero(ctx, assets.hero, hero);
+
+    requestAnimationFrame(gameLoop);
+  }
+
   requestAnimationFrame(gameLoop);
 }
 
-requestAnimationFrame(gameLoop);
+start().catch((err) => {
+  console.error('Failed to start game', err);
+});
