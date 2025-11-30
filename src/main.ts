@@ -8,6 +8,7 @@ import { InteractTarget, getInteractionTarget, interact } from './interactions';
 import { DEFAULT_LEVEL_ID, LEVELS, LEVELS_BY_ID, LevelData } from './levels';
 import { Camera, drawTileMap } from './renderTiles';
 import { createLevelLoader, levelTilesToGrid } from './levelLoader';
+import { AgentState, createAgent, drawAgents, updateAgents } from './agents';
 
 const { canvas, ctx } = initializeCanvas('game-canvas');
 const controls: ControlState = setupControls();
@@ -17,7 +18,8 @@ async function start() {
   let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
   let map = levelTilesToGrid(currentLevel);
   let hero = createHero(map, assets.hero);
-  let entityRegistry: EntityRegistry = createEntityRegistry([hero.entity]);
+  let agents: AgentState[] = createLevelAgents(currentLevel, assets);
+  let entityRegistry: EntityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity)]);
   let activeTerrain = assets.terrain[currentLevel.terrain];
   const camera: Camera = {
     x: 0,
@@ -52,7 +54,8 @@ async function start() {
     currentLevel = nextLevel;
     map = levelTilesToGrid(currentLevel);
     hero = createHero(map, assets.hero);
-    entityRegistry = createEntityRegistry([hero.entity]);
+    agents = createLevelAgents(currentLevel, assets);
+    entityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity)]);
     activeTerrain = assets.terrain[currentLevel.terrain];
     camera.x = 0;
     camera.y = 0;
@@ -67,18 +70,22 @@ async function start() {
   let lastTime = performance.now();
 
   function update(deltaMs: number) {
+    const collidables = entityRegistry.withComponent('collidable');
+
     if (controls.consumeInteractRequest() || controls.pollGamepadInteract()) {
       const target: InteractTarget | null = getInteractionTarget(hero, map, entityRegistry);
       interact(target, hero);
     }
 
-    updateHero(hero, controls.keys, deltaMs, map);
+    updateHero(hero, controls.keys, deltaMs, map, collidables);
+    updateAgents(agents, deltaMs, map, collidables);
     updateCamera(camera, hero, map);
   }
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawTileMap(ctx, activeTerrain, map, camera);
+    drawAgents(ctx, assets.enemies, agents, camera);
     drawHero(ctx, assets.hero, hero, camera);
   }
 
@@ -108,6 +115,11 @@ async function start() {
 start().catch((err) => {
   console.error('Failed to start game', err);
 });
+
+function createLevelAgents(level: LevelData, assets: Assets): AgentState[] {
+  const spawns = level.spawns ?? [];
+  return spawns.map((spawn) => createAgent(spawn, assets.enemies));
+}
 
 function updateCamera(camera: Camera, hero: HeroState, map: number[][]): void {
   const mapWidth = map[0].length * TILE_SIZE;

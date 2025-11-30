@@ -6,9 +6,9 @@ import {
   createPosition,
   createSprite,
   getEntityPixelPosition,
-  setEntityPixelPosition
+  EntityWithComponent
 } from './entities';
-import { isTileCollidable } from './tiles';
+import { moveEntityWithCollision } from './movement';
 
 export type HeroState = {
   entity: Entity;
@@ -47,9 +47,9 @@ export function updateHero(
   hero: HeroState,
   keys: Record<string, boolean>,
   deltaMs: number,
-  map: number[][]
+  map: number[][],
+  collidables: EntityWithComponent<'collidable'>[]
 ): void {
-  const start = getHeroPixelPosition(hero);
   const deltaSeconds = deltaMs / 1000;
   let dx = 0;
   let dy = 0;
@@ -65,30 +65,6 @@ export function updateHero(
   if (right) dx += 1;
 
   const inputIsActive = dx !== 0 || dy !== 0;
-
-  const mapWidth = map[0].length * TILE_SIZE;
-  const mapHeight = map.length * TILE_SIZE;
-
-  const isCollidingWithMap = (x: number, y: number): boolean => {
-    if (x < 0 || y < 0 || x + TILE_SIZE > mapWidth || y + TILE_SIZE > mapHeight) {
-      return true;
-    }
-
-    const minCol = Math.floor(x / TILE_SIZE);
-    const maxCol = Math.floor((x + TILE_SIZE - 1) / TILE_SIZE);
-    const minRow = Math.floor(y / TILE_SIZE);
-    const maxRow = Math.floor((y + TILE_SIZE - 1) / TILE_SIZE);
-
-    for (let row = minRow; row <= maxRow; row += 1) {
-      for (let col = minCol; col <= maxCol; col += 1) {
-        if (isTileCollidable(map[row][col])) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  };
 
   if (inputIsActive) {
     const length = Math.hypot(dx, dy) || 1;
@@ -108,23 +84,17 @@ export function updateHero(
       hero.entity.sprite.direction = direction;
     }
 
-    let currentX = start.x;
-    let currentY = start.y;
-
-    const attemptedX = currentX + normalizedDx * stepPixels;
-    if (!isCollidingWithMap(attemptedX, currentY)) {
-      currentX = attemptedX;
-    }
-
-    const attemptedY = currentY + normalizedDy * stepPixels;
-    if (!isCollidingWithMap(currentX, attemptedY)) {
-      currentY = attemptedY;
-    }
-
-    const moved = currentX !== start.x || currentY !== start.y;
+    const { moved } = moveEntityWithCollision(
+      hero.entity,
+      normalizedDx,
+      normalizedDy,
+      hero.speedPixelsPerSecond ?? hero.speedTilesPerSecond * TILE_SIZE,
+      deltaMs,
+      map,
+      collidables
+    );
 
     if (moved) {
-      setEntityPixelPosition(hero.entity, currentX, currentY);
       hero.frameTimer += deltaMs;
       if (hero.frameTimer >= FRAME_DURATION_MS) {
         hero.entity.sprite.frame = hero.entity.sprite.frame % 2 === 0 ? 1 : 2;

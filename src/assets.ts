@@ -10,6 +10,7 @@ export type SpriteSheet = {
 
 export type Assets = {
   hero: SpriteSheet;
+  enemies: SpriteSheet;
   terrain: {
     grass: SpriteSheet;
     castle: SpriteSheet;
@@ -32,8 +33,9 @@ function resolvePublicAsset(path: string): string {
 }
 
 export async function loadAssets(): Promise<Assets> {
-  const [heroImage, grassImage, castleImage] = await Promise.all([
+  const [heroImage, enemyImage, grassImage, castleImage] = await Promise.all([
     loadImage(resolvePublicAsset('hero_sprites_16x16.png')),
+    loadImage(resolvePublicAsset('enemies.png')),
     loadImage(resolvePublicAsset('grassy.png')),
     loadImage(resolvePublicAsset('castle.png'))
   ]);
@@ -41,6 +43,13 @@ export async function loadAssets(): Promise<Assets> {
   return {
     hero: {
       image: heroImage,
+      tileWidth: 64,
+      tileHeight: 64,
+      columns: 16,
+      rows: 16
+    },
+    enemies: {
+      image: enemyImage,
       tileWidth: 64,
       tileHeight: 64,
       columns: 16,
