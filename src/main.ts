@@ -136,12 +136,13 @@ async function start() {
     loaderSelect.value = currentLevel.id;
   }
 
+  const FIXED_TIME_STEP_MS = 1000 / 60;
+  const MAX_STEPS_PER_FRAME = 5;
+  const MAX_ACCUMULATED_MS = 250;
+  let accumulator = 0;
   let lastTime = performance.now();
 
-  function gameLoop(timestamp: number) {
-    const deltaMs = timestamp - lastTime;
-    lastTime = timestamp;
-
+  function update(deltaMs: number) {
     if (consumeInteractRequest() || pollGamepadInteract()) {
       const target: InteractTarget | null = getInteractionTarget(hero, map);
       interact(target);
@@ -149,11 +150,31 @@ async function start() {
 
     updateHero(hero, keys, deltaMs, map);
     updateCamera(camera, hero, map);
+  }
 
+  function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawTileMap(ctx, activeTerrain, map, camera);
     drawHero(ctx, assets.hero, hero, camera);
+  }
 
+  function gameLoop(timestamp: number) {
+    const frameDelta = Math.min(timestamp - lastTime, MAX_ACCUMULATED_MS);
+    lastTime = timestamp;
+    accumulator += frameDelta;
+
+    let steps = 0;
+    while (accumulator >= FIXED_TIME_STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+      update(FIXED_TIME_STEP_MS);
+      accumulator -= FIXED_TIME_STEP_MS;
+      steps += 1;
+    }
+
+    if (steps === MAX_STEPS_PER_FRAME) {
+      accumulator = 0;
+    }
+
+    render();
     requestAnimationFrame(gameLoop);
   }
 
