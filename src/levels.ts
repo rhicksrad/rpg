@@ -462,6 +462,28 @@ function createOverworldStructures(width: number, height: number): number[][] {
   addBuilding(map, midCol - 26, midRow + 6, 12, 9, 1, 'brick');
   addBuilding(map, midCol + 10, midRow + 7, 11, 9, -1, 'wood');
 
+  const buildingDoors = [
+    { x: midCol - 14, y: midRow - 4 },
+    { x: midCol + 11, y: midRow - 6 },
+    { x: midCol - 19, y: midRow + 14 },
+    { x: midCol + 14, y: midRow + 15 }
+  ];
+
+  buildingDoors.forEach(({ x, y }) => {
+    if (map[y + 1]?.[x] !== undefined) {
+      map[y + 1][x] = VILLAGE_TILES.gravel;
+      map[y + 2][x] = VILLAGE_TILES.pathEdgeV;
+    }
+  });
+
+  const merchantStorefront = { x: midCol + 14, y: midRow + 15 };
+  if (map[merchantStorefront.y + 1]?.[merchantStorefront.x] !== undefined) {
+    map[merchantStorefront.y][merchantStorefront.x] = VILLAGE_TILES.door;
+    map[merchantStorefront.y + 1][merchantStorefront.x] = VILLAGE_TILES.gravel;
+    map[merchantStorefront.y + 1][merchantStorefront.x - 1] = VILLAGE_TILES.sign;
+    map[merchantStorefront.y + 1][merchantStorefront.x + 1] = VILLAGE_TILES.pathEdgeV;
+  }
+
   addFencedGarden(map, midCol - 30, midRow + 18, 14, 9, -1);
   addFencedGarden(map, midCol + 18, midRow + 18, 13, 9, 1);
   fillRect(map, midCol - 5, midRow + 18, 10, 6, VILLAGE_TILES.dirtPacked);
@@ -476,10 +498,11 @@ function createOverworldStructures(width: number, height: number): number[][] {
 
   entrances.forEach(({ x, y }) => {
     fillRect(map, x - 3, y - 2, 6, 5, VILLAGE_TILES.dirtPacked);
-    fillRect(map, x - 2, y - 1, 4, 3, VILLAGE_TILES.gravel);
-    map[y - 2][x] = VILLAGE_TILES.sign;
+    fillRect(map, x - 2, y - 1, 4, 4, VILLAGE_TILES.gravel);
+    map[y - 2][x - 1] = VILLAGE_TILES.sign;
+    map[y - 2][x + 1] = VILLAGE_TILES.sign;
     map[y - 1][x] = VILLAGE_TILES.doorAlt;
-    map[y + 1][x] = VILLAGE_TILES.bushAlt;
+    map[y + 1][x] = VILLAGE_TILES.pathEdgeV;
   });
 
   return map;
