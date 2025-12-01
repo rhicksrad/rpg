@@ -1238,31 +1238,171 @@ const castleLevel: LevelData = {
   width: 32,
   height: 22,
   terrain: 'castle',
-  tiles: generateTiles(32, 22, {
-    floorTile: 4,
-    pathTile: 5,
-    accentTile: 7,
-    borderTile: 30,
-    waterTile: 25,
-    pitTile: 26
-  }),
+  ...(() => {
+    const width = 32;
+    const height = 22;
+    const base: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 4));
+    const overlay: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
+
+    // Outer curtain walls with a breached gate.
+    for (let col = 0; col < width; col += 1) {
+      base[0][col] = 30;
+      base[height - 1][col] = 30;
+    }
+    for (let row = 0; row < height; row += 1) {
+      base[row][0] = 30;
+      base[row][width - 1] = 30;
+    }
+    base[height - 1][15] = 5;
+    base[height - 1][16] = 5;
+    drawVerticalPath(base, 15, 1, height - 2, 5);
+    drawVerticalPath(base, 16, 1, height - 2, 5);
+
+    // Courtyard promenades to flanking yards.
+    drawHorizontalPath(base, 12, 3, width - 4, 5);
+    fillRect(base, 3, 13, 8, 6, 31);
+    fillRect(base, width - 11, 13, 8, 6, 31);
+
+    // Keep floor and stone walls.
+    fillRect(base, 10, 5, 12, 10, 31);
+    for (let col = 10; col < 22; col += 1) {
+      base[5][col] = 30;
+      base[14][col] = 30;
+    }
+    for (let row = 5; row < 15; row += 1) {
+      base[row][10] = 30;
+      base[row][21] = 30;
+    }
+    base[14][15] = 5;
+    base[14][16] = 5;
+    drawVerticalPath(base, 15, 14, height - 3, 5);
+    drawVerticalPath(base, 16, 14, height - 3, 5);
+
+    // Throne dais and stair landings.
+    fillRect(base, 13, 7, 6, 2, 7);
+    fillRect(base, 12, 9, 8, 2, 5);
+    fillRect(base, 11, 11, 10, 2, 31);
+
+    // Side barracks carved into the curtain wall.
+    fillRect(base, 2, 4, 6, 6, 31);
+    fillRect(base, width - 8, 4, 6, 6, 31);
+    base[9][4] = 5;
+    base[9][width - 5] = 5;
+
+    // Accent battlements and inner courtyard markers.
+    for (let col = 4; col < width - 4; col += 3) {
+      base[3][col] = 7;
+      base[height - 4][col] = 7;
+    }
+
+    // Overlay banners and environmental hazards.
+    [12, 20].forEach((col) => {
+      overlay[5][col] = 7; // keep banners
+      overlay[8][col] = 7; // inner hall banners
+    });
+    fillRect(overlay, 5, 17, 4, 2, 25); // western bath
+    fillRect(overlay, width - 9, 17, 4, 2, 25); // eastern bath
+    fillRect(overlay, 6, 14, 3, 2, 26); // western pit trap
+    fillRect(overlay, width - 9, 14, 3, 2, 26); // eastern pit trap
+    fillRect(overlay, 14, 6, 4, 1, 26); // moat channel before throne
+
+    return {
+      tiles: base.flat(),
+      layers: [
+        { terrain: 'castle', tiles: base.flat() },
+        { terrain: 'castle', tiles: overlay.flat() }
+      ]
+    };
+  })(),
   spawns: [
     {
       kind: 'enemy',
-      tileX: 8,
-      tileY: 11,
+      tileX: 15,
+      tileY: 19,
       waypoints: [
-        { tileX: 8, tileY: 11 },
-        { tileX: 24, tileY: 11 }
+        { tileX: 15, tileY: 19 },
+        { tileX: 16, tileY: 16 },
+        { tileX: 15, tileY: 13 }
       ],
       pauseDurationMs: 450,
-      speedTilesPerSecond: 3.25,
+      speedTilesPerSecond: 3.5,
+      detectionRangeTiles: 8,
       tags: ['guard']
+    },
+    {
+      kind: 'enemy',
+      tileX: 7,
+      tileY: 14,
+      waypoints: [
+        { tileX: 7, tileY: 14 },
+        { tileX: 12, tileY: 14 },
+        { tileX: 12, tileY: 11 }
+      ],
+      pauseDurationMs: 500,
+      speedTilesPerSecond: 3.25,
+      detectionRangeTiles: 7,
+      tags: ['guard']
+    },
+    {
+      kind: 'enemy',
+      tileX: 24,
+      tileY: 14,
+      waypoints: [
+        { tileX: 24, tileY: 14 },
+        { tileX: 19, tileY: 14 },
+        { tileX: 19, tileY: 11 }
+      ],
+      pauseDurationMs: 500,
+      speedTilesPerSecond: 3.25,
+      detectionRangeTiles: 7,
+      tags: ['guard']
+    },
+    {
+      kind: 'enemy',
+      tileX: 15,
+      tileY: 12,
+      waypoints: [
+        { tileX: 15, tileY: 12 },
+        { tileX: 16, tileY: 10 },
+        { tileX: 17, tileY: 12 }
+      ],
+      pauseDurationMs: 400,
+      speedTilesPerSecond: 3.75,
+      detectionRangeTiles: 8,
+      tags: ['warden']
+    },
+    {
+      kind: 'enemy',
+      tileX: 16,
+      tileY: 8,
+      waypoints: [
+        { tileX: 16, tileY: 8 },
+        { tileX: 18, tileY: 8 },
+        { tileX: 18, tileY: 10 },
+        { tileX: 14, tileY: 10 },
+        { tileX: 14, tileY: 8 }
+      ],
+      pauseDurationMs: 350,
+      speedTilesPerSecond: 4,
+      detectionRangeTiles: 9,
+      attackDamage: 6,
+      health: 22,
+      tags: ['warden', 'boss'],
+      drops: ['key', 'coin']
     }
   ],
   items: [
-    { itemId: 'potion', tileX: 6, tileY: 6 },
-    { itemId: 'boots', tileX: 16, tileY: 14 }
+    { itemId: 'potion', tileX: 4, tileY: 5 },
+    { itemId: 'potion', tileX: 27, tileY: 5 },
+    { itemId: 'boots', tileX: 6, tileY: 15 },
+    { itemId: 'antidote', tileX: 25, tileY: 15 },
+    { itemId: 'bomb', tileX: 12, tileY: 18 },
+    { itemId: 'bomb', tileX: 20, tileY: 18 }
+  ],
+  chests: [
+    { id: 'west-barracks', coins: 30, itemId: 'potion', tileX: 3, tileY: 6 },
+    { id: 'east-barracks', coins: 30, itemId: 'antidote', tileX: 28, tileY: 6 },
+    { id: 'throne-cache', coins: 60, itemId: 'boots', tileX: 12, tileY: 8 }
   ]
 };
 
