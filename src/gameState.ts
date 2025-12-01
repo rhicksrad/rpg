@@ -1,11 +1,14 @@
+import { QuestLog } from './quests';
+
 export type GameMode = 'title' | 'playing' | 'paused' | 'dialogue' | 'inventory' | 'gameover';
 
 export type GameState = {
   mode: GameMode;
+  questLog: QuestLog;
 };
 
-export function createGameState(): GameState {
-  return { mode: 'playing' };
+export function createGameState(questLog: QuestLog): GameState {
+  return { mode: 'playing', questLog };
 }
 
 export function togglePause(state: GameState): void {

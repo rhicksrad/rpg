@@ -154,6 +154,15 @@ canvas {
   padding: 6px 8px;
 }
 
+.hud-quest {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #e7ebf7;
+  line-height: 1.4;
+}
+
 .quest-overlay {
   position: absolute;
   inset: 0;
@@ -198,6 +207,56 @@ canvas {
 .quest-explainer {
   font-size: 12px;
   color: #cfd3e0;
+}
+
+.quest-dialogue {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(248, 228, 115, 0.25);
+  padding: 10px;
+  min-height: 130px;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #f5f0dc;
+}
+
+.quest-dialogue p {
+  margin: 0;
+}
+
+.quest-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-option {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(248, 228, 115, 0.35);
+  color: #fdf8e6;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: inherit;
+  transition: background 120ms ease, transform 80ms ease;
+}
+
+.quest-option strong {
+  color: #ffe799;
+  font-size: 13px;
+}
+
+.quest-option span {
+  color: #cfd3e0;
+  font-size: 11px;
+}
+
+.quest-option:hover {
+  background: rgba(248, 228, 115, 0.15);
+  transform: translateY(-1px);
 }
 
 .quest-list {
