@@ -380,9 +380,11 @@ function createGrasslandLevel(): LevelData {
 function createOverworldBase(width: number, height: number): number[][] {
   const map = Array.from({ length: height }, (_, row) =>
     Array.from({ length: width }, (_, col) => {
-      const noise = (row * 17 + col * 13) % 11;
+      const noise = (row * 17 + col * 13) % 23;
       if (noise === 0) return VILLAGE_TILES.grassAlt;
-      if (noise === 1) return VILLAGE_TILES.dirt;
+      if (noise === 1) return VILLAGE_TILES.grassAlt;
+      if (noise === 2) return VILLAGE_TILES.bush;
+      if (noise === 3) return VILLAGE_TILES.bushAlt;
       return VILLAGE_TILES.grass;
     })
   );
@@ -435,6 +437,17 @@ function createOverworldBase(width: number, height: number): number[][] {
   addWaterPocket(Math.floor(width * 0.7), Math.floor(height * 0.28), 12);
   addWaterPocket(Math.floor(width * 0.52), Math.floor(height * 0.42), 8);
 
+  const sprinkleWildflowers = (): void => {
+    for (let row = 0; row < height; row += 1) {
+      for (let col = 0; col < width; col += 1) {
+        const hash = (row * 31 + col * 17 + (row % 7) * (col % 5)) % 97;
+        if (map[row][col] === VILLAGE_TILES.grass && hash === 0) {
+          map[row][col] = VILLAGE_TILES.grassAlt;
+        }
+      }
+    }
+  };
+
   const midRow = Math.floor(height / 2);
   const midCol = Math.floor(width / 2);
 
@@ -448,6 +461,8 @@ function createOverworldBase(width: number, height: number): number[][] {
   clearings.forEach(({ x, y, w, h }) => {
     fillRect(map, x - Math.floor(w / 2), y - Math.floor(h / 2), w, h, VILLAGE_TILES.grassAlt);
   });
+
+  sprinkleWildflowers();
 
   for (let row = 12; row < height - 12; row += 11) {
     for (let col = 10; col < width - 10; col += 14) {
@@ -469,8 +484,13 @@ function createOverworldStructures(width: number, height: number): number[][] {
 
   const plazaWidth = 38;
   const plazaHeight = 30;
-  fillRect(map, midCol - Math.floor(plazaWidth / 2), midRow - Math.floor(plazaHeight / 2), plazaWidth, plazaHeight, VILLAGE_TILES.dirtPacked);
-  fillRect(map, midCol - Math.floor(plazaWidth / 2) + 2, midRow - Math.floor(plazaHeight / 2) + 2, plazaWidth - 4, plazaHeight - 4, VILLAGE_TILES.gravel);
+  const plazaStartX = midCol - Math.floor(plazaWidth / 2);
+  const plazaStartY = midRow - Math.floor(plazaHeight / 2);
+
+  fillRect(map, plazaStartX, plazaStartY, plazaWidth, plazaHeight, VILLAGE_TILES.grassAlt);
+  fillRect(map, plazaStartX + 2, plazaStartY + 2, plazaWidth - 4, plazaHeight - 4, VILLAGE_TILES.gravel);
+  fillRect(map, plazaStartX + 6, plazaStartY + 5, plazaWidth - 12, plazaHeight - 10, VILLAGE_TILES.grassAlt);
+  fillRect(map, plazaStartX + 14, plazaStartY + 10, plazaWidth - 28, plazaHeight - 20, VILLAGE_TILES.grass);
   map[midRow][midCol] = VILLAGE_TILES.well;
 
   const decorateTownPond = (): void => {
