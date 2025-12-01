@@ -674,33 +674,71 @@ function generateTiles(
 function createEchoingDepthsLevel(): LevelData {
   const width = 38;
   const height = 28;
-  const map: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 21));
+  const base: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 21));
+  const overlay: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
 
-  fillRect(map, 0, 0, width, 1, 19);
-  fillRect(map, 0, height - 1, width, 1, 19);
-  fillRect(map, 0, 0, 1, height, 19);
-  fillRect(map, width - 1, 0, 1, height, 19);
+  fillRect(base, 0, 0, width, 1, 19);
+  fillRect(base, 0, height - 1, width, 1, 19);
+  fillRect(base, 0, 0, 1, height, 19);
+  fillRect(base, width - 1, 0, 1, height, 19);
 
-  fillRect(map, 4, 3, width - 8, height - 6, 14);
-  fillRect(map, 6, 6, 8, 6, 27); // cleansing pools
-  fillRect(map, width - 14, 8, 10, 5, 25); // cold water pockets
-  fillRect(map, 16, 14, 6, 4, 28); // echo pulse vents
+  // Irregular chambers connected by chokepoints.
+  fillRect(base, 3, 3, 14, 7, 14); // northern study
+  fillRect(base, 18, 6, 10, 6, 22); // vent nexus floor
+  fillRect(base, 7, 15, 20, 9, 14); // flooded promenade
+  fillRect(base, 26, 10, 9, 11, 23); // brood roost
+  fillRect(base, 14, 8, 4, 3, 14); // narrow throat into vents
+  fillRect(base, 20, 12, 3, 7, 14); // choke leading to lower hall
+  fillRect(base, 24, 17, 5, 3, 14); // boss approach channel
 
-  for (let row = 8; row < height - 8; row += 4) {
-    for (let col = 10; col < width - 10; col += 6) {
-      map[row][col] = 18; // pillar cover
-    }
+  // Hazards and varied castle flooring.
+  fillRect(base, 12, 5, 5, 2, 25); // dripping channel
+  fillRect(base, 6, 12, 4, 2, 27); // shallow vents near stairs
+  fillRect(base, 19, 8, 4, 2, 28); // echo pulse vents
+  fillRect(base, 9, 17, 6, 3, 27); // cleansing pools
+  fillRect(base, 22, 15, 5, 3, 25); // cold water pockets
+  fillRect(base, 28, 12, 4, 2, 24); // slick entry tiles
+
+  // Cover clustered near vents and flanking routes.
+  const coverPillars = [
+    { x: 18, y: 9 },
+    { x: 22, y: 9 },
+    { x: 18, y: 14 },
+    { x: 22, y: 14 },
+    { x: 11, y: 17 },
+    { x: 15, y: 17 },
+    { x: 12, y: 20 },
+    { x: 24, y: 16 },
+    { x: 27, y: 16 }
+  ];
+  coverPillars.forEach(({ x, y }) => {
+    base[y][x] = 18;
+  });
+
+  // Accent overlays for glow crystals and trims.
+  const crystalClusters = [
+    { x: 8, y: 6 },
+    { x: 30, y: 11 },
+    { x: 13, y: 19 },
+    { x: 27, y: 21 }
+  ];
+  crystalClusters.forEach(({ x, y }) => {
+    overlay[y][x] = 15;
+  });
+  for (let col = 5; col < width - 5; col += 4) {
+    overlay[4][col] = 16;
+    overlay[height - 5][col] = 16;
   }
 
   const spawns: AgentSpawn[] = [
     {
       kind: 'enemy',
-      tileX: 9,
-      tileY: 9,
+      tileX: 10,
+      tileY: 6,
       waypoints: [
-        { tileX: 9, tileY: 9 },
-        { tileX: 14, tileY: 7 },
-        { tileX: 12, tileY: 12 }
+        { tileX: 10, tileY: 6 },
+        { tileX: 13, tileY: 6 },
+        { tileX: 12, tileY: 9 }
       ],
       speedTilesPerSecond: 4.5,
       tags: ['bat'],
@@ -708,12 +746,12 @@ function createEchoingDepthsLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 20,
+      tileX: 21,
       tileY: 10,
       waypoints: [
-        { tileX: 20, tileY: 10 },
-        { tileX: 26, tileY: 9 },
-        { tileX: 24, tileY: 12 }
+        { tileX: 21, tileY: 10 },
+        { tileX: 24, tileY: 10 },
+        { tileX: 21, tileY: 13 }
       ],
       tags: ['bat'],
       speedTilesPerSecond: 4.5,
@@ -721,12 +759,12 @@ function createEchoingDepthsLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 14,
-      tileY: 18,
+      tileX: 13,
+      tileY: 19,
       waypoints: [
-        { tileX: 14, tileY: 18 },
-        { tileX: 10, tileY: 20 },
-        { tileX: 18, tileY: 19 }
+        { tileX: 13, tileY: 19 },
+        { tileX: 10, tileY: 21 },
+        { tileX: 17, tileY: 20 }
       ],
       tags: ['slime'],
       health: 10,
@@ -734,12 +772,12 @@ function createEchoingDepthsLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 28,
-      tileY: 16,
+      tileX: 25,
+      tileY: 17,
       waypoints: [
-        { tileX: 28, tileY: 16 },
-        { tileX: 30, tileY: 13 },
-        { tileX: 32, tileY: 18 }
+        { tileX: 25, tileY: 17 },
+        { tileX: 28, tileY: 17 },
+        { tileX: 26, tileY: 20 }
       ],
       tags: ['rat'],
       speedTilesPerSecond: 5,
@@ -747,8 +785,8 @@ function createEchoingDepthsLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 24,
-      tileY: 22,
+      tileX: 29,
+      tileY: 15,
       tags: ['broodmother', 'boss', 'bat'],
       health: 28,
       attackDamage: 4,
@@ -760,9 +798,9 @@ function createEchoingDepthsLevel(): LevelData {
   ];
 
   const items: ItemSpawn[] = [
-    { itemId: 'glow-crystal', tileX: 8, tileY: 7 },
-    { itemId: 'glow-crystal', tileX: 30, tileY: 9 },
-    { itemId: 'lantern-polish', tileX: 12, tileY: 21 }
+    { itemId: 'glow-crystal', tileX: 8, tileY: 6 },
+    { itemId: 'glow-crystal', tileX: 27, tileY: 21 },
+    { itemId: 'lantern-polish', tileX: 16, tileY: 22 }
   ];
 
   return {
@@ -773,7 +811,11 @@ function createEchoingDepthsLevel(): LevelData {
     width,
     height,
     terrain: 'castle',
-    tiles: map.flat(),
+    tiles: base.flat(),
+    layers: [
+      { terrain: 'castle', tiles: base.flat() },
+      { terrain: 'castle', tiles: overlay.flat() }
+    ],
     spawns,
     items,
     hazards: [
