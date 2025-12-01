@@ -380,12 +380,11 @@ function createGrasslandLevel(): LevelData {
 function createOverworldBase(width: number, height: number): number[][] {
   const map = Array.from({ length: height }, (_, row) =>
     Array.from({ length: width }, (_, col) => {
-      const noise = (row * 17 + col * 13) % 23;
-      if (noise === 0) return VILLAGE_TILES.grassAlt;
-      if (noise === 1) return VILLAGE_TILES.grassAlt;
-      if (noise === 2) return VILLAGE_TILES.bush;
-      if (noise === 3) return VILLAGE_TILES.bushAlt;
-      return VILLAGE_TILES.grass;
+      const noise = (row * 17 + col * 13) % 29;
+      if (noise === 0 || noise === 1) return OVERWORLD_TILES.grassAlt;
+      if (noise === 2) return OVERWORLD_TILES.path;
+      if (noise === 3) return OVERWORLD_TILES.rockRidge;
+      return OVERWORLD_TILES.grass;
     })
   );
 
@@ -393,6 +392,11 @@ function createOverworldBase(width: number, height: number): number[][] {
   fillRect(map, 0, height - 4, width, 4, OVERWORLD_TILES.darkRock);
   fillRect(map, 0, 0, 4, height, OVERWORLD_TILES.darkRock);
   fillRect(map, width - 4, 0, 4, height, OVERWORLD_TILES.darkRock);
+
+  fillRect(map, 4, 4, width - 8, 1, OVERWORLD_TILES.rockRidge);
+  fillRect(map, 4, height - 5, width - 8, 1, OVERWORLD_TILES.rockRidge);
+  fillRect(map, 4, 4, 1, height - 8, OVERWORLD_TILES.rockRidge);
+  fillRect(map, width - 5, 4, 1, height - 8, OVERWORLD_TILES.rockRidge);
 
   const addWaterPocket = (cx: number, cy: number, radius: number): void => {
     for (let row = Math.max(0, cy - radius); row < Math.min(height, cy + radius); row += 1) {
@@ -441,8 +445,8 @@ function createOverworldBase(width: number, height: number): number[][] {
     for (let row = 0; row < height; row += 1) {
       for (let col = 0; col < width; col += 1) {
         const hash = (row * 31 + col * 17 + (row % 7) * (col % 5)) % 97;
-        if (map[row][col] === VILLAGE_TILES.grass && hash === 0) {
-          map[row][col] = VILLAGE_TILES.grassAlt;
+        if (map[row][col] === OVERWORLD_TILES.grass && hash === 0) {
+          map[row][col] = OVERWORLD_TILES.grassAlt;
         }
       }
     }
@@ -459,10 +463,46 @@ function createOverworldBase(width: number, height: number): number[][] {
   ];
 
   clearings.forEach(({ x, y, w, h }) => {
-    fillRect(map, x - Math.floor(w / 2), y - Math.floor(h / 2), w, h, VILLAGE_TILES.grassAlt);
+    const startX = x - Math.floor(w / 2);
+    const startY = y - Math.floor(h / 2);
+    fillRect(map, startX, startY, w, h, OVERWORLD_TILES.grassAlt);
+    fillRect(map, startX - 2, startY - 2, w + 4, 1, OVERWORLD_TILES.rockRidge);
+    fillRect(map, startX - 2, startY + h + 1, w + 4, 1, OVERWORLD_TILES.rockRidge);
+    fillRect(map, startX - 2, startY - 1, 1, h + 2, OVERWORLD_TILES.rockRidge);
+    fillRect(map, startX + w + 1, startY - 1, 1, h + 2, OVERWORLD_TILES.rockRidge);
+    map[startY - 1][x] = OVERWORLD_TILES.brightStone;
   });
 
   sprinkleWildflowers();
+
+  const connectPaths = (points: { x: number; y: number }[]): void => {
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const start = points[i];
+      const end = points[i + 1];
+      const steps = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+      for (let step = 0; step <= steps; step += 1) {
+        const t = steps === 0 ? 0 : step / steps;
+        const x = Math.round(start.x + (end.x - start.x) * t);
+        const y = Math.round(start.y + (end.y - start.y) * t);
+        const wobble = ((x * 11 + y * 5 + step) % 3) - 1;
+        const variant = (step + x + y) % 7 === 0 ? OVERWORLD_TILES.brightStone : OVERWORLD_TILES.path;
+        map[Math.min(height - 1, Math.max(0, y + wobble))][x] = variant;
+      }
+    }
+  };
+
+  connectPaths([
+    { x: 8, y: midRow },
+    { x: midCol - 80, y: midRow - 92 },
+    { x: midCol, y: midRow },
+    { x: midCol + 110, y: midRow - 6 },
+    { x: width - 8, y: midRow - 12 }
+  ]);
+  connectPaths([
+    { x: midCol - 40, y: 10 },
+    { x: midCol - 6, y: midRow + 90 },
+    { x: midCol + 32, y: height - 10 }
+  ]);
 
   for (let row = 12; row < height - 12; row += 11) {
     for (let col = 10; col < width - 10; col += 14) {
@@ -491,6 +531,10 @@ function createOverworldStructures(width: number, height: number): number[][] {
   fillRect(map, plazaStartX + 2, plazaStartY + 2, plazaWidth - 4, plazaHeight - 4, VILLAGE_TILES.gravel);
   fillRect(map, plazaStartX + 6, plazaStartY + 5, plazaWidth - 12, plazaHeight - 10, VILLAGE_TILES.grassAlt);
   fillRect(map, plazaStartX + 14, plazaStartY + 10, plazaWidth - 28, plazaHeight - 20, VILLAGE_TILES.grass);
+  fillRect(map, plazaStartX - 2, plazaStartY - 2, plazaWidth + 4, 1, OVERWORLD_TILES.rockRidge);
+  fillRect(map, plazaStartX - 2, plazaStartY + plazaHeight + 1, plazaWidth + 4, 1, OVERWORLD_TILES.rockRidge);
+  fillRect(map, plazaStartX - 2, plazaStartY - 1, 1, plazaHeight + 2, OVERWORLD_TILES.rockRidge);
+  fillRect(map, plazaStartX + plazaWidth + 1, plazaStartY - 1, 1, plazaHeight + 2, OVERWORLD_TILES.rockRidge);
   map[midRow][midCol] = VILLAGE_TILES.well;
 
   const decorateTownPond = (): void => {
@@ -506,6 +550,8 @@ function createOverworldStructures(width: number, height: number): number[][] {
 
   drawHorizontalPath(map, midRow, 6, width - 7, pathTile);
   drawVerticalPath(map, midCol, 6, height - 7, pathTile);
+  drawHorizontalPath(map, midRow - 1, 8, width - 9, stoneMarker);
+  drawVerticalPath(map, midCol + 1, 8, height - 9, stoneMarker);
   drawHorizontalPath(map, midRow - 12, midCol - 80, midCol + 80, stoneMarker);
   drawVerticalPath(map, midCol + 32, midRow - 64, midRow + 96, stoneMarker);
 
@@ -555,6 +601,8 @@ function createOverworldStructures(width: number, height: number): number[][] {
   questEntrances.forEach(({ x, y, labelLeft }) => {
     fillRect(map, x - 3, y - 2, 7, 5, VILLAGE_TILES.dirtPacked);
     fillRect(map, x - 2, y - 1, 5, 4, VILLAGE_TILES.gravel);
+    map[y - 3][x] = OVERWORLD_TILES.brightStone;
+    map[y + 2][x] = OVERWORLD_TILES.rockRidge;
     map[y - 2][labelLeft ? x - 2 : x + 2] = VILLAGE_TILES.sign;
     map[y - 1][x] = VILLAGE_TILES.doorAlt;
     map[y + 1][x] = VILLAGE_TILES.pathEdgeV;
