@@ -1,4 +1,5 @@
 import { AgentSpawn } from './agents';
+import { ChestSpawn } from './chests';
 import { ItemSpawn } from './items';
 
 export type LevelTerrain = 'overworld' | 'village' | 'castle';
@@ -29,6 +30,7 @@ export type LevelData = {
   layers?: LevelLayer[];
   spawns?: AgentSpawn[];
   items?: ItemSpawn[];
+  chests?: ChestSpawn[];
   hazards?: LevelHazard[];
 };
 
@@ -258,6 +260,7 @@ function createGrasslandLevel(): LevelData {
   const spawns: AgentSpawn[] = [
     { kind: 'npc', tileX: midCol - 3, tileY: midRow + 2, facing: 1, tags: ['villager'] },
     { kind: 'npc', tileX: midCol + 10, tileY: midRow - 3, facing: 2, tags: ['scout'] },
+    { kind: 'npc', tileX: midCol + 5, tileY: midRow + 4, facing: 2, tags: ['merchant'], spriteIndex: 8 },
     {
       kind: 'npc',
       tileX: midCol,
@@ -376,6 +379,12 @@ function createGrasslandLevel(): LevelData {
     { itemId: 'warmth-salve', tileX: subAreas.west.x - 4, tileY: subAreas.west.y + 8 }
   ];
 
+  const chests: ChestSpawn[] = [
+    { id: 'plaza-cache', tileX: midCol + 2, tileY: midRow + 10, coins: 18, itemId: 'potion' },
+    { id: 'northern-stash', tileX: subAreas.north.x + 3, tileY: subAreas.north.y - 4, coins: 22 },
+    { id: 'western-rations', tileX: subAreas.west.x - 5, tileY: subAreas.west.y + 4, coins: 14 }
+  ];
+
   return {
     id: 'level-1',
     levelName: 'Verdant Lowlands',
@@ -390,7 +399,8 @@ function createGrasslandLevel(): LevelData {
       { terrain: 'village', tiles: structures.flat() }
     ],
     spawns,
-    items
+    items,
+    chests
   };
 }
 

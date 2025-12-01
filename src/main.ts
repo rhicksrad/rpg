@@ -16,6 +16,10 @@ import { createGameState, toggleInventory, togglePause } from './gameState';
 import { QUESTS, createQuestLog, createQuestOverlay } from './quests';
 import { applyDamage } from './stats';
 import { getTileMetadata } from './tiles';
+import { earnCurrency } from './inventory';
+import { createStorefront } from './store';
+import { createChestEntity, drawChests } from './chests';
+import { drawWeaponSwing } from './weapons';
 
 const { canvas, ctx } = initializeCanvas('game-canvas');
 const controls: ControlState = setupControls();
@@ -26,6 +30,15 @@ async function start() {
     const gameState = createGameState(questLog);
     const hud = createHud();
     const questOverlay = createQuestOverlay(questLog, {
+      onClose: () => {
+        gameState.mode = 'playing';
+      },
+      onComplete: (quest) => {
+        earnCurrency(hero.inventory, quest.rewardCoins);
+      }
+    });
+    const storeOverlay = createStorefront({
+      getHero: () => hero,
       onClose: () => {
         gameState.mode = 'playing';
       }
@@ -39,11 +52,14 @@ async function start() {
     revealExplored(explored, hero, 9, 4);
     let agents: AgentState[] = createLevelAgents(currentLevel, assets);
     attachQuestGiverInteraction(agents, gameState, questOverlay);
+    attachStoreInteraction(agents, gameState, storeOverlay);
     let itemEntities: Entity[] = createLevelItems(currentLevel, assets);
+    let chestEntities: Entity[] = createLevelChests(currentLevel, assets, () => hero);
     let entityRegistry: EntityRegistry = createEntityRegistry([
       hero.entity,
       ...agents.map((agent) => agent.entity),
-      ...itemEntities
+      ...itemEntities,
+      ...chestEntities
     ]);
     let hazardTimers: Record<string, number> = {};
     const camera: Camera = {
@@ -74,6 +90,7 @@ async function start() {
     if (app) {
       app.appendChild(topUi);
       app.appendChild(questOverlay.container);
+      app.appendChild(storeOverlay.container);
     }
 
     loaderSelect.value = currentLevel.id;
@@ -88,8 +105,15 @@ async function start() {
       hero = createHero(map, assets.hero);
       agents = createLevelAgents(currentLevel, assets);
       attachQuestGiverInteraction(agents, gameState, questOverlay);
+      attachStoreInteraction(agents, gameState, storeOverlay);
       itemEntities = createLevelItems(currentLevel, assets);
-      entityRegistry = createEntityRegistry([hero.entity, ...agents.map((agent) => agent.entity), ...itemEntities]);
+      chestEntities = createLevelChests(currentLevel, assets, () => hero);
+      entityRegistry = createEntityRegistry([
+        hero.entity,
+        ...agents.map((agent) => agent.entity),
+        ...itemEntities,
+        ...chestEntities
+      ]);
       hazardTimers = {};
       camera.x = 0;
       camera.y = 0;
@@ -114,6 +138,7 @@ async function start() {
       if (controls.consumeInteractRequest() || controls.pollGamepadInteract()) {
         if (gameState.mode === 'dialogue') {
           questOverlay.close();
+          storeOverlay.close();
           gameState.mode = 'playing';
           return;
         }
@@ -145,76 +170,84 @@ async function start() {
         .forEach((entity) => entityRegistry.remove(entity.id));
       itemEntities = remainingItems;
 
+      const remainingChests = chestEntities.filter((entity) => !entity.metadata?.opened);
+      chestEntities
+        .filter((entity) => !remainingChests.includes(entity))
+        .forEach((entity) => entityRegistry.remove(entity.id));
+      chestEntities = remainingChests;
+
       updateCamera(camera, hero, map);
       updateHud(hud, hero, gameState.questLog);
     }
 
-  function applyLevelHazards(deltaMs: number) {
-    const hazards = currentLevel.hazards ?? [];
-    hazards.forEach((hazard) => {
-      hazardTimers[hazard.id] = (hazardTimers[hazard.id] ?? 0) + deltaMs;
-      if (hazardTimers[hazard.id] < hazard.intervalMs) return;
-      hazardTimers[hazard.id] = 0;
+    function applyLevelHazards(deltaMs: number) {
+      const hazards = currentLevel.hazards ?? [];
+      hazards.forEach((hazard) => {
+        hazardTimers[hazard.id] = (hazardTimers[hazard.id] ?? 0) + deltaMs;
+        if (hazardTimers[hazard.id] < hazard.intervalMs) return;
+        hazardTimers[hazard.id] = 0;
 
-      if (hazard.appliesTo !== 'enemies') {
-        const heroEntity = hero.entity as EntityWithComponent<'health'>;
-        const safe = entityOnSafeTile(hero.entity, map, hazard.safeTags);
-        if (!safe) {
-          applyDamage(heroEntity, hazard.damage);
-          hero.isAlive = Boolean(heroEntity.components.health?.isAlive);
-          if (!hero.isAlive) {
-            respawnHero(hero);
-          }
-        }
-      }
-
-      if (hazard.appliesTo !== 'hero') {
-        agents.forEach((agent) => {
-          if (agent.entity.kind !== 'enemy' || !agent.entity.components.health?.isAlive) return;
-          const safe = entityOnSafeTile(agent.entity, map, hazard.safeTags);
+        if (hazard.appliesTo !== 'enemies') {
+          const heroEntity = hero.entity as EntityWithComponent<'health'>;
+          const safe = entityOnSafeTile(hero.entity, map, hazard.safeTags);
           if (!safe) {
-            applyDamage(agent.entity as EntityWithComponent<'health'>, hazard.damage);
-            agent.isAlive = Boolean(agent.entity.components.health?.isAlive);
-            if (!agent.isAlive) {
-              entityRegistry.remove(agent.entity.id);
+            applyDamage(heroEntity, hazard.damage);
+            hero.isAlive = Boolean(heroEntity.components.health?.isAlive);
+            if (!hero.isAlive) {
+              respawnHero(hero);
             }
           }
-        });
+        }
+
+        if (hazard.appliesTo !== 'hero') {
+          agents.forEach((agent) => {
+            if (agent.entity.kind !== 'enemy' || !agent.entity.components.health?.isAlive) return;
+            const safe = entityOnSafeTile(agent.entity, map, hazard.safeTags);
+            if (!safe) {
+              applyDamage(agent.entity as EntityWithComponent<'health'>, hazard.damage);
+              agent.isAlive = Boolean(agent.entity.components.health?.isAlive);
+              if (!agent.isAlive) {
+                entityRegistry.remove(agent.entity.id);
+              }
+            }
+          });
+        }
+      });
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawTileLayers(ctx, renderLayers, camera);
+      drawItems(ctx, assets.items, itemEntities, camera);
+      drawChests(ctx, assets.items, chestEntities, camera);
+      drawAgents(ctx, assets.enemies, agents, camera);
+      drawWeaponSwing(ctx, hero, camera);
+      drawHero(ctx, assets.hero, hero, camera);
+      drawFogOfWar(ctx, camera, explored, hero);
+    }
+
+    function gameLoop(timestamp: number) {
+      const frameDelta = Math.min(timestamp - lastTime, MAX_ACCUMULATED_MS);
+      lastTime = timestamp;
+      accumulator += frameDelta;
+
+      let steps = 0;
+      while (accumulator >= FIXED_TIME_STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+        update(FIXED_TIME_STEP_MS);
+        accumulator -= FIXED_TIME_STEP_MS;
+        steps += 1;
       }
-    });
-  }
 
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawTileLayers(ctx, renderLayers, camera);
-    drawItems(ctx, assets.items, itemEntities, camera);
-    drawAgents(ctx, assets.enemies, agents, camera);
-    drawHero(ctx, assets.hero, hero, camera);
-    drawFogOfWar(ctx, camera, explored, hero);
-  }
+      if (steps === MAX_STEPS_PER_FRAME) {
+        accumulator = 0;
+      }
 
-  function gameLoop(timestamp: number) {
-    const frameDelta = Math.min(timestamp - lastTime, MAX_ACCUMULATED_MS);
-    lastTime = timestamp;
-    accumulator += frameDelta;
-
-    let steps = 0;
-    while (accumulator >= FIXED_TIME_STEP_MS && steps < MAX_STEPS_PER_FRAME) {
-      update(FIXED_TIME_STEP_MS);
-      accumulator -= FIXED_TIME_STEP_MS;
-      steps += 1;
+      render();
+      requestAnimationFrame(gameLoop);
     }
 
-    if (steps === MAX_STEPS_PER_FRAME) {
-      accumulator = 0;
-    }
-
-    render();
     requestAnimationFrame(gameLoop);
   }
-
-  requestAnimationFrame(gameLoop);
-}
 
 start().catch((err) => {
   console.error('Failed to start game', err);
@@ -331,9 +364,31 @@ function attachQuestGiverInteraction(
   };
 }
 
+function attachStoreInteraction(
+  agents: AgentState[],
+  gameState: ReturnType<typeof createGameState>,
+  storeOverlay: ReturnType<typeof createStorefront>
+): void {
+  const shopkeeper = agents.find((agent) => agent.entity.kind === 'npc' && agent.entity.tags?.includes('merchant'));
+  if (!shopkeeper) return;
+
+  shopkeeper.entity.components.interactable = {
+    prompt: 'Shop',
+    onInteract: () => {
+      gameState.mode = 'dialogue';
+      storeOverlay.open();
+    }
+  };
+}
+
 function createLevelItems(level: LevelData, assets: Assets): Entity[] {
   const spawns: ItemSpawn[] = level.items ?? [];
   return spawns.map((spawn) => createItemEntity(spawn, assets.items));
+}
+
+function createLevelChests(level: LevelData, assets: Assets, getHero: () => HeroState): Entity[] {
+  const spawns = level.chests ?? [];
+  return spawns.map((spawn) => createChestEntity(spawn, assets.items, getHero));
 }
 
 function entityOnSafeTile(

@@ -2,6 +2,7 @@ import { AgentState } from './agents';
 import { EntityRegistry, EntityWithComponent } from './entities';
 import { gainExperience, HeroState } from './hero';
 import { ITEM_DEFINITIONS } from './inventory';
+import { computeWeaponDamage } from './weapons';
 import { applyDamage } from './stats';
 
 export type AttackResult = {
@@ -40,7 +41,7 @@ export function updateCombat(
         const dy = agent.entity.position.tileY - heroPos.tileY;
         const distance = Math.hypot(dx, dy);
         if (distance <= ATTACK_RANGE_TILES && isInFront(facing, dx, dy)) {
-          const damage = Math.max(1, hero.secondary.attack);
+          const damage = computeWeaponDamage(hero);
           const hitDamage = applyDamage(agent.entity as EntityWithComponent<'health'>, damage);
           agent.hitFlashMs = 180;
           result.targetsHit += 1;

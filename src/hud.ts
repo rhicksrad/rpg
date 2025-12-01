@@ -1,5 +1,5 @@
 import { HeroState } from './hero';
-import { ITEM_DEFINITIONS } from './inventory';
+import { getCurrencyBalance, ITEM_DEFINITIONS } from './inventory';
 import { QuestLog } from './quests';
 
 export type HudElements = {
@@ -78,7 +78,8 @@ export function updateHud(hud: HudElements, hero: HeroState, questLog?: QuestLog
     .map(([slot, item]) => `${slot}: ${item ? ITEM_DEFINITIONS[item.itemId]?.name ?? item.itemId : 'None'}`)
     .join(' | ');
 
-  hud.inventory.textContent = `Inventory: ${inventoryItems || 'Empty'} | Equipped: ${equipped || 'None'}`;
+  const coins = getCurrencyBalance(hero.inventory);
+  hud.inventory.textContent = `Purse: ${coins} coins | Inventory: ${inventoryItems || 'Empty'} | Equipped: ${equipped || 'None'}`;
 
   const activeQuest = questLog?.active;
   hud.quest.textContent = activeQuest
