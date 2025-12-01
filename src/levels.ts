@@ -998,6 +998,38 @@ function createRiverHollowLevel(): LevelData {
   const base: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 13));
   const overlay: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
 
+  const paintDisc = (cx: number, cy: number, radius: number, tile: number) => {
+    for (let row = cy - radius; row <= cy + radius; row += 1) {
+      for (let col = cx - radius; col <= cx + radius; col += 1) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const distanceSq = (row - cy) ** 2 + (col - cx) ** 2;
+          if (distanceSq <= radius ** 2) {
+            base[row][col] = tile;
+          }
+        }
+      }
+    }
+  };
+
+  const carveMeanderingChannel = (
+    points: { x: number; y: number }[],
+    radius: number,
+    tile: number
+  ) => {
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const start = points[i];
+      const end = points[i + 1];
+      const steps = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+
+      for (let step = 0; step <= steps; step += 1) {
+        const t = step / steps;
+        const x = Math.round(start.x + (end.x - start.x) * t);
+        const y = Math.round(start.y + (end.y - start.y) * t);
+        paintDisc(x, y, radius, tile);
+      }
+    }
+  };
+
   // Perimeter stones and carved-out basin.
   fillRect(base, 0, 0, width, 1, 18);
   fillRect(base, 0, height - 1, width, 1, 18);
@@ -1005,20 +1037,55 @@ function createRiverHollowLevel(): LevelData {
   fillRect(base, width - 1, 0, 1, height, 18);
   fillRect(base, 2, 2, width - 4, height - 4, 14);
 
-  // Irregular river channels and chill pools.
-  fillRect(base, 5, 4, width - 10, 5, 25);
-  fillRect(base, 10, 9, width - 20, 5, 29);
-  fillRect(base, 8, 16, width - 16, 4, 25);
-  fillRect(base, 4, 14, 6, 3, 26);
-  fillRect(base, width - 12, 6, 5, 3, 26);
+  // Irregular river channels and chill pools carved with meandering curves.
+  carveMeanderingChannel(
+    [
+      { x: 4, y: 6 },
+      { x: 10, y: 4 },
+      { x: 16, y: 8 },
+      { x: 22, y: 7 },
+      { x: 30, y: 10 },
+      { x: 34, y: 14 },
+      { x: 28, y: 18 },
+      { x: 18, y: 20 },
+      { x: 9, y: 18 }
+    ],
+    2,
+    25
+  );
 
-  // Riverbanks, alcoves, and bridge decking.
-  fillRect(base, 6, 6, 6, 3, 18);
-  fillRect(base, width - 16, 12, 6, 3, 18);
-  drawVerticalPath(base, 14, 4, 20, 17);
-  drawVerticalPath(base, 24, 5, 18, 17);
-  drawHorizontalPath(base, 14, 6, 12, 17);
-  drawHorizontalPath(base, 20, 26, 33, 17);
+  carveMeanderingChannel(
+    [
+      { x: 12, y: 11 },
+      { x: 18, y: 13 },
+      { x: 24, y: 12 },
+      { x: 27, y: 15 },
+      { x: 22, y: 17 },
+      { x: 14, y: 16 }
+    ],
+    1,
+    26
+  );
+
+  paintDisc(18, 12, 2, 29);
+  paintDisc(30, 17, 2, 29);
+  paintDisc(11, 7, 1, 26);
+  paintDisc(7, 16, 1, 26);
+
+  // Riverbanks, alcoves, bridges, and stepping stones.
+  fillRect(base, 5, 9, 5, 4, 18);
+  fillRect(base, width - 11, 15, 5, 4, 18);
+  drawVerticalPath(base, 16, 5, 20, 17);
+  drawVerticalPath(base, 24, 7, 19, 17);
+  drawHorizontalPath(base, 12, 7, 18, 17);
+  drawHorizontalPath(base, 20, 23, 31, 17);
+  drawHorizontalPath(base, 19, 10, 15, 17);
+  overlay[8][14] = 15;
+  overlay[9][15] = 16;
+  overlay[15][23] = 15;
+  overlay[16][22] = 16;
+  overlay[18][12] = 15;
+  overlay[18][14] = 15;
 
   // Columns and markers along the main flow.
   base[7][18] = 30;
@@ -1026,10 +1093,16 @@ function createRiverHollowLevel(): LevelData {
   base[12][24] = 30;
   base[18][22] = 30;
 
-  // Warmth tiles beside braziers to match hazard tags.
-  base[11][9] = 31;
-  base[11][width - 10] = 31;
-  base[19][Math.floor(width / 2)] = 31;
+  // Warmth tiles beside braziers tucked into calm alcoves.
+  [
+    { x: 8, y: 10 },
+    { x: 9, y: 10 },
+    { x: 30, y: 17 },
+    { x: 31, y: 17 },
+    { x: Math.floor(width / 2), y: 21 }
+  ].forEach(({ x, y }) => {
+    base[y][x] = 31;
+  });
 
   // Decorative overlay for gravel edges, banners, and water shimmer.
   for (let col = 4; col < width - 4; col += 3) {
@@ -1041,9 +1114,9 @@ function createRiverHollowLevel(): LevelData {
     overlay[row][width - 6] = 16;
   }
   const riverShore = [
-    { x: 5, y: 4, w: width - 10, h: 5 },
-    { x: 10, y: 9, w: width - 20, h: 5 },
-    { x: 8, y: 16, w: width - 16, h: 4 }
+    { x: 2, y: 3, w: 22, h: 10 },
+    { x: 12, y: 10, w: 18, h: 10 },
+    { x: 22, y: 5, w: 14, h: 14 }
   ];
   riverShore.forEach(({ x, y, w, h }) => {
     for (let row = y - 1; row <= y + h; row += 1) {
@@ -1061,12 +1134,12 @@ function createRiverHollowLevel(): LevelData {
   const spawns: AgentSpawn[] = [
     {
       kind: 'enemy',
-      tileX: 9,
-      tileY: 6,
+      tileX: 14,
+      tileY: 12,
       waypoints: [
-        { tileX: 9, tileY: 6 },
-        { tileX: 16, tileY: 6 },
-        { tileX: 16, tileY: 9 }
+        { tileX: 14, tileY: 12 },
+        { tileX: 17, tileY: 9 },
+        { tileX: 12, tileY: 8 }
       ],
       tags: ['wisp'],
       attackDamage: 2,
@@ -1074,13 +1147,13 @@ function createRiverHollowLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 22,
-      tileY: 11,
+      tileX: 21,
+      tileY: 15,
       tags: ['leech'],
       waypoints: [
-        { tileX: 22, tileY: 11 },
-        { tileX: 26, tileY: 11 },
-        { tileX: 26, tileY: 14 }
+        { tileX: 21, tileY: 15 },
+        { tileX: 24, tileY: 16 },
+        { tileX: 24, tileY: 12 }
       ],
       attackDamage: 2,
       speedTilesPerSecond: 4.5,
@@ -1088,27 +1161,33 @@ function createRiverHollowLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 15,
-      tileY: 19,
+      tileX: 12,
+      tileY: 20,
       tags: ['bog'],
       waypoints: [
-        { tileX: 15, tileY: 19 },
-        { tileX: 12, tileY: 22 },
-        { tileX: 20, tileY: 22 }
+        { tileX: 12, tileY: 20 },
+        { tileX: 10, tileY: 22 },
+        { tileX: 15, tileY: 22 },
+        { tileX: 15, tileY: 19 }
       ],
       attackDamage: 3,
       drops: ['coin']
     },
     {
       kind: 'enemy',
-      tileX: 30,
-      tileY: 15,
+      tileX: 24,
+      tileY: 18,
       tags: ['kelpie', 'boss'],
       health: 30,
       attackDamage: 5,
       detectionRangeTiles: 8,
       attackRangeTiles: 1.25,
-      drops: ['still-water-charm', 'creek-pearl']
+      drops: ['still-water-charm', 'creek-pearl'],
+      waypoints: [
+        { tileX: 24, tileY: 18 },
+        { tileX: 30, tileY: 17 },
+        { tileX: 28, tileY: 21 }
+      ]
     }
   ];
 
