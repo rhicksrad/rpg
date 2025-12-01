@@ -6,6 +6,41 @@ export type Quest = {
   rewardHint: string;
 };
 
+export type QuestLog = {
+  available: Quest[];
+  active: Quest | null;
+  completed: Quest[];
+};
+
+export function createQuestLog(quests: Quest[]): QuestLog {
+  return {
+    available: [...quests],
+    active: null,
+    completed: []
+  };
+}
+
+export function acceptQuest(log: QuestLog, questId: string): Quest | null {
+  const quest = log.available.find((q) => q.id === questId) ?? log.completed.find((q) => q.id === questId);
+  if (!quest) return log.active?.id === questId ? log.active : null;
+
+  if (log.active && log.active.id !== questId && !log.completed.find((completedQuest) => completedQuest.id === log.active?.id)) {
+    log.available = [log.active, ...log.available.filter((q) => q.id !== log.active?.id)];
+  }
+
+  log.available = log.available.filter((q) => q.id !== questId);
+  log.active = quest;
+  return quest;
+}
+
+export function completeActiveQuest(log: QuestLog): Quest | null {
+  if (!log.active) return null;
+  const finished = log.active;
+  log.completed = [...log.completed, finished];
+  log.active = null;
+  return finished;
+}
+
 export type QuestDetail = {
   areaName: string;
   areas: { name: string; description: string }[];
@@ -196,7 +231,10 @@ export const QUEST_DETAILS: Record<string, QuestDetail> = {
   }
 };
 
-export function createQuestOverlay(quests: Quest[], onClose?: () => void) {
+export function createQuestOverlay(
+  questLog: QuestLog,
+  options?: { onAccept?: (quest: Quest) => void; onClose?: () => void }
+) {
   const container = document.createElement('div');
   container.className = 'quest-overlay hidden';
 
@@ -205,148 +243,150 @@ export function createQuestOverlay(quests: Quest[], onClose?: () => void) {
 
   const heading = document.createElement('div');
   heading.className = 'quest-heading';
-  heading.innerHTML = `<p class="quest-speaker">Old Man</p><p class="quest-line">&ldquo;Thee choose from my quests of three.&rdquo;</p>`;
+  heading.innerHTML = `<p class="quest-speaker">Old Man</p><p class="quest-line">&ldquo;Come closer, traveler.&rdquo;</p>`;
 
-  const explainer = document.createElement('p');
-  explainer.className = 'quest-explainer';
-  explainer.textContent = 'Each path leads into a sub-area that opens like a cave or tunnel. Pick the peril that suits you, traveler.';
+  const dialogue = document.createElement('div');
+  dialogue.className = 'quest-dialogue';
 
-  const questList = document.createElement('div');
-  questList.className = 'quest-list';
+  const optionsList = document.createElement('div');
+  optionsList.className = 'quest-options';
 
-  quests.forEach((quest) => {
-    const card = document.createElement('article');
-    card.className = 'quest-card';
+  const setDialogue = (lines: string[]) => {
+    dialogue.innerHTML = '';
+    lines.forEach((line) => {
+      const p = document.createElement('p');
+      p.textContent = line;
+      dialogue.appendChild(p);
+    });
+  };
 
-    const title = document.createElement('h3');
-    title.textContent = quest.title;
+  const addOption = (label: string, handler: () => void, helper?: string) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'quest-option';
+    button.innerHTML = helper ? `<strong>${label}</strong><span>${helper}</span>` : label;
+    button.addEventListener('click', handler);
+    optionsList.appendChild(button);
+  };
 
-    const location = document.createElement('p');
-    location.className = 'quest-location';
-    location.textContent = quest.location;
-
-    const summary = document.createElement('p');
-    summary.textContent = quest.summary;
-
-    const reward = document.createElement('p');
-    reward.className = 'quest-reward';
-    reward.textContent = quest.rewardHint;
-
-    const detail = QUEST_DETAILS[quest.id];
-
-    card.appendChild(title);
-    card.appendChild(location);
-    card.appendChild(summary);
-    card.appendChild(reward);
-
-    if (detail) {
-      const areaName = document.createElement('p');
-      areaName.className = 'quest-area-name';
-      areaName.textContent = detail.areaName;
-
-      const areaList = document.createElement('ul');
-      areaList.className = 'quest-bullets';
-      detail.areas.forEach((area) => {
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${area.name}:</strong> ${area.description}`;
-        areaList.appendChild(li);
-      });
-
-      const systemList = document.createElement('ul');
-      systemList.className = 'quest-bullets';
-      detail.systems.forEach((system) => {
-        const li = document.createElement('li');
-        li.textContent = system;
-        systemList.appendChild(li);
-      });
-
-      const enemies = document.createElement('ul');
-      enemies.className = 'quest-bullets';
-      detail.enemies.forEach((enemy) => {
-        const li = document.createElement('li');
-        const drops = enemy.drops?.length ? ` Drops: ${enemy.drops.join(', ')}.` : '';
-        li.innerHTML = `<strong>${enemy.name}:</strong> ${enemy.behavior}${drops}`;
-        enemies.appendChild(li);
-      });
-
-      const boss = document.createElement('div');
-      boss.className = 'quest-boss';
-      boss.innerHTML = `<p class="quest-boss-name">${detail.boss.name}, ${detail.boss.title}</p>`;
-      const bossMechanics = document.createElement('ul');
-      bossMechanics.className = 'quest-bullets';
-      detail.boss.mechanics.forEach((mech) => {
-        const li = document.createElement('li');
-        li.textContent = mech;
-        bossMechanics.appendChild(li);
-      });
-      const bossReward = document.createElement('p');
-      bossReward.className = 'quest-reward';
-      bossReward.textContent = `Reward: ${detail.boss.reward}`;
-      boss.append(bossMechanics, bossReward);
-
-      const items = document.createElement('p');
-      items.className = 'quest-detail-line';
-      items.textContent = `Key items: ${detail.items.join(', ')}.`;
-
-      const bonuses = document.createElement('ul');
-      bonuses.className = 'quest-bullets';
-      detail.bonuses.forEach((bonus) => {
-        const li = document.createElement('li');
-        li.textContent = bonus;
-        bonuses.appendChild(li);
-      });
-
-      const section = document.createElement('div');
-      section.className = 'quest-detail';
-
-      const areaHeader = document.createElement('p');
-      areaHeader.className = 'quest-detail-heading';
-      areaHeader.textContent = 'Areas';
-      const systemHeader = document.createElement('p');
-      systemHeader.className = 'quest-detail-heading';
-      systemHeader.textContent = 'Systems & hazards';
-      const enemyHeader = document.createElement('p');
-      enemyHeader.className = 'quest-detail-heading';
-      enemyHeader.textContent = 'Enemies';
-      const bossHeader = document.createElement('p');
-      bossHeader.className = 'quest-detail-heading';
-      bossHeader.textContent = 'Boss';
-      const bonusHeader = document.createElement('p');
-      bonusHeader.className = 'quest-detail-heading';
-      bonusHeader.textContent = 'Bonuses';
-
-      section.append(areaName, areaHeader, areaList, systemHeader, systemList, enemyHeader, enemies, bossHeader, boss, items, bonusHeader, bonuses);
-      card.appendChild(section);
-    }
-    questList.appendChild(card);
-  });
-
-  const footer = document.createElement('div');
-  footer.className = 'quest-footer';
-
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.textContent = 'Return to the square';
-  closeButton.addEventListener('click', () => {
+  const close = () => {
     container.classList.add('hidden');
-    onClose?.();
-  });
+    options?.onClose?.();
+  };
 
-  footer.appendChild(closeButton);
+  const renderQuestReminder = (quest: Quest) => {
+    setDialogue([
+      'The old man strokes his beard thoughtfully.',
+      `"You're already walking the path of ${quest.title}.", he says.`,
+      quest.summary,
+      `Head toward ${quest.location} and remember: ${quest.rewardHint}`
+    ]);
+
+    optionsList.innerHTML = '';
+    addOption('I will return soon.', close);
+    addOption('What other work do you have?', renderGreeting);
+  };
+
+  const renderAccepted = (quest: Quest) => {
+    setDialogue([
+      `"Good. I'll mark the ${quest.location.toLowerCase()} on your map," the old man nods.`,
+      `"Return with news of ${quest.title}. The village is counting on you."`
+    ]);
+    optionsList.innerHTML = '';
+    addOption('I will get moving.', close);
+    addOption('Anything else before I go?', renderGreeting);
+  };
+
+  const renderQuestConversation = (quest: Quest) => {
+    const detail = QUEST_DETAILS[quest.id];
+    const hook = detail?.areas[0]?.description ?? quest.summary;
+    const danger = detail?.systems[0] ?? 'Expect trouble in the depths.';
+
+    setDialogue([
+      `The old man leans in. "There is a way into ${quest.title}.", he whispers.`,
+      hook,
+      `The hazards? ${danger}`,
+      `Return with what you can; ${quest.rewardHint}`
+    ]);
+
+    optionsList.innerHTML = '';
+
+    if (questLog.active?.id === quest.id) {
+      addOption('I remember—let me get back to it.', close);
+    } else {
+      addOption('I will take this on.', () => {
+        const accepted = acceptQuest(questLog, quest.id);
+        if (accepted) {
+          options?.onAccept?.(accepted);
+        }
+        renderAccepted(quest);
+      });
+    }
+
+    addOption('Tell me about something else.', renderGreeting);
+  };
+
+  function renderCompletedLog() {
+    setDialogue([
+      'The old man smiles faintly.',
+      '"You have already helped with these matters," he says, tapping his staff on the ground.'
+    ]);
+
+    optionsList.innerHTML = '';
+    questLog.completed.forEach((quest) => {
+      addOption(quest.title, () => {
+        setDialogue([
+          `"${quest.title}" is behind us now, thanks to you.`,
+          `I still recall the trek ${quest.location.toLowerCase()}.`
+        ]);
+        optionsList.innerHTML = '';
+        addOption('Anything else?', renderGreeting);
+      });
+    });
+
+    addOption('Back to business.', renderGreeting);
+  }
+
+  function renderGreeting() {
+    const openingLine =
+      questLog.active && questLog.active.id
+        ? '"Back again? The path you chose still awaits," the old man notes.'
+        : '"Looking for work? The wilds groan with trouble," the old man offers.';
+
+    setDialogue([
+      openingLine,
+      '"Ask, and I will point you toward a path."'
+    ]);
+
+    optionsList.innerHTML = '';
+
+    if (questLog.active) {
+      addOption(`Remind me about ${questLog.active.title}.`, () => renderQuestReminder(questLog.active as Quest));
+    }
+
+    questLog.available.forEach((quest) => {
+      addOption(`Ask about ${quest.title}`, () => renderQuestConversation(quest), quest.location);
+    });
+
+    if (questLog.completed.length) {
+      addOption('How have my efforts helped?', renderCompletedLog);
+    }
+
+    addOption('I need to go.', close);
+  }
 
   panel.appendChild(heading);
-  panel.appendChild(explainer);
-  panel.appendChild(questList);
-  panel.appendChild(footer);
+  panel.appendChild(dialogue);
+  panel.appendChild(optionsList);
 
   container.appendChild(panel);
 
   return {
     container,
-    open: () => container.classList.remove('hidden'),
-    close: () => {
-      container.classList.add('hidden');
-      onClose?.();
-    }
+    open: () => {
+      renderGreeting();
+      container.classList.remove('hidden');
+    },
+    close
   };
 }

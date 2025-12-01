@@ -13,7 +13,7 @@ import { createItemEntity, ItemSpawn, pickupNearbyItems } from './items';
 import { createHud, updateHud } from './hud';
 import { queueHeroAttack, updateCombat } from './combat';
 import { createGameState, toggleInventory, togglePause } from './gameState';
-import { QUESTS, createQuestOverlay } from './quests';
+import { QUESTS, createQuestLog, createQuestOverlay } from './quests';
 import { applyDamage } from './stats';
 import { getTileMetadata } from './tiles';
 
@@ -22,10 +22,13 @@ const controls: ControlState = setupControls();
 
 async function start() {
     const assets: Assets = await loadAssets();
-    const gameState = createGameState();
+    const questLog = createQuestLog(QUESTS);
+    const gameState = createGameState(questLog);
     const hud = createHud();
-    const questOverlay = createQuestOverlay(QUESTS, () => {
-      gameState.mode = 'playing';
+    const questOverlay = createQuestOverlay(questLog, {
+      onClose: () => {
+        gameState.mode = 'playing';
+      }
     });
     let currentLevel: LevelData = LEVELS_BY_ID[DEFAULT_LEVEL_ID];
     let layers = resolveLevelLayers(currentLevel);
@@ -119,7 +122,7 @@ async function start() {
       }
 
       if (gameState.mode !== 'playing' && gameState.mode !== 'inventory') {
-        updateHud(hud, hero);
+        updateHud(hud, hero, gameState.questLog);
         return;
       }
 
@@ -143,7 +146,7 @@ async function start() {
       itemEntities = remainingItems;
 
       updateCamera(camera, hero, map);
-      updateHud(hud, hero);
+      updateHud(hud, hero, gameState.questLog);
     }
 
   function applyLevelHazards(deltaMs: number) {

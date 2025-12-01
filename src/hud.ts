@@ -1,10 +1,12 @@
 import { HeroState } from './hero';
 import { ITEM_DEFINITIONS } from './inventory';
+import { QuestLog } from './quests';
 
 export type HudElements = {
   container: HTMLElement;
   bars: { hp: HTMLElement; xp: HTMLElement };
   inventory: HTMLElement;
+  quest: HTMLElement;
 };
 
 export function createHud(): HudElements {
@@ -36,20 +38,30 @@ export function createHud(): HudElements {
   const inventory = document.createElement('div');
   inventory.className = 'hud-inventory';
 
+  const questHeader = document.createElement('div');
+  questHeader.className = 'hud-section-title';
+  questHeader.textContent = 'Quest';
+
+  const quest = document.createElement('div');
+  quest.className = 'hud-quest';
+
   panel.appendChild(statusHeader);
   panel.appendChild(barWrapper);
   panel.appendChild(inventoryHeader);
   panel.appendChild(inventory);
+  panel.appendChild(questHeader);
+  panel.appendChild(quest);
   container.appendChild(panel);
 
   return {
     container,
     bars: { hp: hpBar, xp: xpBar },
-    inventory
+    inventory,
+    quest
   };
 }
 
-export function updateHud(hud: HudElements, hero: HeroState): void {
+export function updateHud(hud: HudElements, hero: HeroState, questLog?: QuestLog): void {
   const health = hero.entity.components.health;
   const hpPercent = health ? Math.max(0, (health.current / health.max) * 100) : 0;
   hud.bars.hp.textContent = `HP ${health?.current ?? 0}/${health?.max ?? 0}`;
@@ -67,4 +79,9 @@ export function updateHud(hud: HudElements, hero: HeroState): void {
     .join(' | ');
 
   hud.inventory.textContent = `Inventory: ${inventoryItems || 'Empty'} | Equipped: ${equipped || 'None'}`;
+
+  const activeQuest = questLog?.active;
+  hud.quest.textContent = activeQuest
+    ? `Active quest: ${activeQuest.title} — ${activeQuest.summary} (Head toward ${activeQuest.location}. Reward: ${activeQuest.rewardHint})`
+    : 'No active quest. Speak with the old man in the town square to pick a path.';
 }
