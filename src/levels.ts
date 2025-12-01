@@ -260,7 +260,7 @@ function createGrasslandLevel(): LevelData {
   const spawns: AgentSpawn[] = [
     { kind: 'npc', tileX: midCol - 3, tileY: midRow + 2, facing: 1, tags: ['villager'] },
     { kind: 'npc', tileX: midCol + 10, tileY: midRow - 3, facing: 2, tags: ['scout'] },
-    { kind: 'npc', tileX: midCol + 5, tileY: midRow + 4, facing: 2, tags: ['merchant'], spriteIndex: 8 },
+    { kind: 'npc', tileX: midCol + 14, tileY: midRow + 15, facing: 2, tags: ['merchant'], spriteIndex: 8 },
     {
       kind: 'npc',
       tileX: midCol,
