@@ -4,6 +4,7 @@ export type Quest = {
   summary: string;
   location: string;
   rewardHint: string;
+  rewardCoins: number;
 };
 
 export type QuestLog = {
@@ -58,7 +59,8 @@ export const QUESTS: Quest[] = [
     summary:
       'Venture into the damp cavern beneath the village well. The bats there carry crystals that glow brighter the deeper you go.',
     location: 'Well-side caverns to the south plaza',
-    rewardHint: 'Return with three glow-crystals for a lantern polish and a pouch of coin.'
+    rewardHint: 'Return with three glow-crystals for a lantern polish and a pouch of coin.',
+    rewardCoins: 24
   },
   {
     id: 'timber-tunnels',
@@ -66,7 +68,8 @@ export const QUESTS: Quest[] = [
     summary:
       'A mining tunnel north of the orchard collapsed, leaving tools and supplies trapped inside. Clear the rubble and recover what you can.',
     location: 'Collapsed tunnel beyond the northern fence',
-    rewardHint: 'Hauling the lost gear back will earn you a sturdy woodcutter sash.'
+    rewardHint: 'Hauling the lost gear back will earn you a sturdy woodcutter sash.',
+    rewardCoins: 30
   },
   {
     id: 'river-hollow',
@@ -74,7 +77,8 @@ export const QUESTS: Quest[] = [
     summary:
       'Follow the creek east until it vanishes underground. Strange lights flicker within—investigate and calm whatever stirs there.',
     location: 'Hidden creek cave in the eastern grove',
-    rewardHint: 'Soothe the spirits to receive a charm that wards off chill and fear.'
+    rewardHint: 'Soothe the spirits to receive a charm that wards off chill and fear.',
+    rewardCoins: 36
   }
 ];
 
@@ -233,7 +237,7 @@ export const QUEST_DETAILS: Record<string, QuestDetail> = {
 
 export function createQuestOverlay(
   questLog: QuestLog,
-  options?: { onAccept?: (quest: Quest) => void; onClose?: () => void }
+  options?: { onAccept?: (quest: Quest) => void; onComplete?: (quest: Quest) => void; onClose?: () => void }
 ) {
   const container = document.createElement('div');
   container.className = 'quest-overlay hidden';
@@ -274,6 +278,26 @@ export function createQuestOverlay(
     options?.onClose?.();
   };
 
+  const completeQuest = (quest: Quest) => {
+    if (questLog.active?.id !== quest.id) {
+      setDialogue([`"You've nothing to report on ${quest.title} yet," the old man says.`]);
+      optionsList.innerHTML = '';
+      addOption('Understood.', renderGreeting);
+      return;
+    }
+
+    const finished = completeActiveQuest(questLog);
+    if (!finished) return;
+    options?.onComplete?.(finished);
+    setDialogue([
+      'The old man nods appreciatively.',
+      `"${finished.title}" is done. The village is safer for it.`,
+      `He presses ${finished.rewardCoins} coins into your palm.`
+    ]);
+    optionsList.innerHTML = '';
+    addOption('Happy to help.', renderGreeting);
+  };
+
   const renderQuestReminder = (quest: Quest) => {
     setDialogue([
       'The old man strokes his beard thoughtfully.',
@@ -283,6 +307,7 @@ export function createQuestOverlay(
     ]);
 
     optionsList.innerHTML = '';
+    addOption('I have returned with what you asked.', () => completeQuest(quest));
     addOption('I will return soon.', close);
     addOption('What other work do you have?', renderGreeting);
   };
@@ -312,6 +337,7 @@ export function createQuestOverlay(
     optionsList.innerHTML = '';
 
     if (questLog.active?.id === quest.id) {
+      addOption(`I have finished ${quest.title}.`, () => completeQuest(quest), `${quest.rewardCoins} coins on completion.`);
       addOption('I remember—let me get back to it.', close);
     } else {
       addOption('I will take this on.', () => {
@@ -362,6 +388,7 @@ export function createQuestOverlay(
 
     if (questLog.active) {
       addOption(`Remind me about ${questLog.active.title}.`, () => renderQuestReminder(questLog.active as Quest));
+      addOption('I have news from the wilds.', () => completeQuest(questLog.active as Quest), 'Turn in your current job.');
     }
 
     questLog.available.forEach((quest) => {

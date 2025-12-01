@@ -353,3 +353,107 @@ canvas {
 .quest-footer button:hover {
   background: #ffe799;
 }
+
+.store-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+  background: rgba(6, 8, 12, 0.6);
+  z-index: 3;
+}
+
+.store-panel {
+  max-width: 640px;
+  width: 100%;
+  background: linear-gradient(160deg, #1d2130, #0f121a);
+  border: 2px solid #9dd6ff;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.45);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #f4f8ff;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.store-heading {
+  border-bottom: 1px solid rgba(157, 214, 255, 0.35);
+  padding-bottom: 6px;
+}
+
+.store-title {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: #9dd6ff;
+}
+
+.store-subtitle {
+  font-size: 12px;
+  color: #d8e4ff;
+}
+
+.store-purse {
+  font-size: 12px;
+  color: #ffe799;
+}
+
+.store-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.store-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(157, 214, 255, 0.35);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.store-item-name {
+  font-size: 13px;
+  color: #9dd6ff;
+}
+
+.store-item-cost {
+  font-size: 12px;
+  color: #ffe799;
+}
+
+.store-item-blurb {
+  font-size: 12px;
+  color: #e0e6f3;
+}
+
+.store-buy,
+.store-close {
+  background: #0f1115;
+  border: 1px solid #9dd6ff;
+  color: #f4f8ff;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.store-buy:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.store-buy:not(:disabled):hover,
+.store-close:hover {
+  background: rgba(157, 214, 255, 0.15);
+  border-color: #ffe799;
+}
+
+.store-message {
+  font-size: 12px;
+  color: #d8e4ff;
+}

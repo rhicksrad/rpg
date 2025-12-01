@@ -23,6 +23,35 @@ export type Inventory = {
   maxSlots: number;
 };
 
+export function getCurrencyBalance(inventory: Inventory): number {
+  return inventory.slots
+    .filter((slot) => slot.itemId === 'coin')
+    .reduce((total, slot) => total + slot.quantity, 0);
+}
+
+export function earnCurrency(inventory: Inventory, amount: number): void {
+  if (amount <= 0) return;
+  addItemToInventory(inventory, 'coin', amount);
+}
+
+export function spendCurrency(inventory: Inventory, amount: number): boolean {
+  if (amount <= 0) return true;
+  const available = getCurrencyBalance(inventory);
+  if (available < amount) return false;
+
+  let remaining = amount;
+  inventory.slots = inventory.slots
+    .map((stack) => {
+      if (stack.itemId !== 'coin' || remaining <= 0) return stack;
+      const spend = Math.min(stack.quantity, remaining);
+      remaining -= spend;
+      return { ...stack, quantity: stack.quantity - spend };
+    })
+    .filter((stack) => stack.quantity > 0);
+
+  return remaining === 0;
+}
+
 export const ITEM_DEFINITIONS: Record<string, ItemDefinition> = {
   coin: {
     id: 'coin',

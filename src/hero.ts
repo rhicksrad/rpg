@@ -9,7 +9,7 @@ import {
   EntityWithComponent
 } from './entities';
 import { moveEntityWithCollision } from './movement';
-import { createInventory, Inventory } from './inventory';
+import { addItemToInventory, createInventory, equipItem, Inventory } from './inventory';
 import { SecondaryStats, StatBlock, applyDamage, createDefaultStats, deriveSecondaryStats } from './stats';
 import { getTileMetadata } from './tiles';
 
@@ -43,6 +43,11 @@ export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
   const sprite = createSprite(heroSheet, 0, 1);
   const stats = createDefaultStats();
   const secondary = deriveSecondaryStats(stats);
+  const inventory = createInventory();
+  addItemToInventory(inventory, 'sword', 1);
+  equipItem(inventory, 'sword');
+  addItemToInventory(inventory, 'coin', 20);
+  addItemToInventory(inventory, 'potion', 1);
 
   const heroEntity = createEntity({
     kind: 'player',
@@ -60,7 +65,7 @@ export function createHero(map: number[][], heroSheet: SpriteSheet): HeroState {
     frameTimer: 0,
     speedTilesPerSecond: 7.5,
     isAlive: true,
-    inventory: createInventory(),
+    inventory,
     stats,
     secondary,
     attackTimerMs: 0,
