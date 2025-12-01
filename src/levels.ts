@@ -792,37 +792,85 @@ function createEchoingDepthsLevel(): LevelData {
 function createTimberTunnelsLevel(): LevelData {
   const width = 44;
   const height = 26;
-  const map: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 21));
+  const base: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 21));
+  const overlay: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
 
-  fillRect(map, 0, 0, width, 1, 3);
-  fillRect(map, 0, height - 1, width, 1, 3);
-  fillRect(map, 0, 0, 1, height, 3);
-  fillRect(map, width - 1, 0, 1, height, 3);
+  // Frame the mine with sturdy walls.
+  fillRect(base, 0, 0, width, 1, 3);
+  fillRect(base, 0, height - 1, width, 1, 3);
+  fillRect(base, 0, 0, 1, height, 3);
+  fillRect(base, width - 1, 0, 1, height, 3);
 
-  fillRect(map, 4, 4, width - 8, 4, 14);
-  fillRect(map, 6, 10, width - 12, 3, 14);
-  fillRect(map, 8, 16, width - 16, 3, 14);
-  fillRect(map, 10, 7, 6, 4, 25); // water pockets
-  fillRect(map, width - 18, 12, 8, 4, 26); // cave-in pits
+  // Carve an irregular zig-zagging corridor and branching rooms.
+  fillRect(base, 3, 3, width - 6, 5, 14);
+  fillRect(base, 7, 8, width - 10, 5, 14);
+  fillRect(base, 10, 13, width - 14, 4, 14);
+  fillRect(base, 6, 17, 18, 5, 14);
+  fillRect(base, 26, 17, 12, 6, 14);
+  fillRect(base, 30, 8, 9, 6, 14);
 
-  for (let col = 6; col < width - 6; col += 6) {
-    map[9][col] = 30;
-    map[15][col + 2] = 30;
+  // Cavern alcoves and cut-ins.
+  fillRect(base, 5, 6, 4, 3, 18);
+  fillRect(base, width - 12, 6, 3, 4, 18);
+  fillRect(base, 16, 20, 4, 3, 18);
+
+  // Pits and water pockets that align to hazard tags.
+  fillRect(base, 11, 9, 5, 3, 25);
+  fillRect(base, 18, 15, 6, 3, 25);
+  fillRect(base, width - 16, 12, 6, 3, 26);
+  fillRect(base, width - 22, 18, 5, 3, 26);
+
+  // Bridges and shored walkways over hazards.
+  drawHorizontalPath(base, 10, 12, 15, 17);
+  drawHorizontalPath(base, 18, 20, 24, 17);
+  drawVerticalPath(base, width - 14, 12, 18, 17);
+
+  // Columns marking choke points and cover around hazards.
+  base[8][14] = 30;
+  base[12][20] = 30;
+  base[14][28] = 30;
+  base[18][32] = 30;
+
+  // Air vents and warmth pockets that line up with hazard safety tags.
+  base[7][6] = 31;
+  base[15][24] = 31;
+  base[20][19] = 31;
+
+  // Decorative overlays for gravel edging, banners, and water edges.
+  for (let row = 4; row < height - 4; row += 3) {
+    overlay[row][10] = 15;
+    overlay[row][Math.floor(width / 2)] = 15;
   }
-
-  map[12][6] = 31;
-  map[18][20] = 31;
-  map[6][width - 10] = 31;
+  for (let col = 12; col < width - 6; col += 4) {
+    overlay[6][col] = 16;
+    overlay[height - 7][col] = 16;
+  }
+  const waterEdges = [
+    { x: 11, y: 9, w: 5, h: 3 },
+    { x: 18, y: 15, w: 6, h: 3 }
+  ];
+  waterEdges.forEach(({ x, y, w, h }) => {
+    for (let row = y - 1; row <= y + h; row += 1) {
+      for (let col = x - 1; col <= x + w; col += 1) {
+        if (
+          overlay[row]?.[col] === -1 &&
+          ![25, 26, 31].includes(base[row]?.[col] ?? -1)
+        ) {
+          overlay[row][col] = 14;
+        }
+      }
+    }
+  });
 
   const spawns: AgentSpawn[] = [
     {
       kind: 'enemy',
-      tileX: 12,
+      tileX: 9,
       tileY: 5,
       waypoints: [
-        { tileX: 12, tileY: 5 },
-        { tileX: 18, tileY: 5 },
-        { tileX: 18, tileY: 8 }
+        { tileX: 9, tileY: 5 },
+        { tileX: 16, tileY: 6 },
+        { tileX: 16, tileY: 9 }
       ],
       tags: ['pickaxer'],
       attackDamage: 3,
@@ -831,11 +879,11 @@ function createTimberTunnelsLevel(): LevelData {
     {
       kind: 'enemy',
       tileX: 22,
-      tileY: 11,
+      tileY: 12,
       waypoints: [
-        { tileX: 22, tileY: 11 },
-        { tileX: 30, tileY: 11 },
-        { tileX: 30, tileY: 14 }
+        { tileX: 22, tileY: 12 },
+        { tileX: 28, tileY: 12 },
+        { tileX: 28, tileY: 15 }
       ],
       tags: ['foreman'],
       health: 18,
@@ -844,21 +892,21 @@ function createTimberTunnelsLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 16,
-      tileY: 17,
+      tileX: 18,
+      tileY: 18,
       tags: ['mole'],
       waypoints: [
-        { tileX: 16, tileY: 17 },
-        { tileX: 12, tileY: 20 },
-        { tileX: 22, tileY: 20 }
+        { tileX: 18, tileY: 18 },
+        { tileX: 14, tileY: 21 },
+        { tileX: 24, tileY: 21 }
       ],
       speedTilesPerSecond: 5,
       drops: ['coin']
     },
     {
       kind: 'enemy',
-      tileX: 32,
-      tileY: 18,
+      tileX: 33,
+      tileY: 10,
       tags: ['warden', 'boss'],
       health: 32,
       attackDamage: 5,
@@ -869,9 +917,9 @@ function createTimberTunnelsLevel(): LevelData {
   ];
 
   const items: ItemSpawn[] = [
-    { itemId: 'timber-plank', tileX: 14, tileY: 6 },
-    { itemId: 'gear-sash', tileX: 24, tileY: 9 },
-    { itemId: 'lantern-oil', tileX: 30, tileY: 17 }
+    { itemId: 'timber-plank', tileX: 12, tileY: 8 },
+    { itemId: 'gear-sash', tileX: 21, tileY: 14 },
+    { itemId: 'lantern-oil', tileX: 30, tileY: 19 }
   ];
 
   return {
@@ -882,7 +930,11 @@ function createTimberTunnelsLevel(): LevelData {
     width,
     height,
     terrain: 'castle',
-    tiles: map.flat(),
+    tiles: base.flat(),
+    layers: [
+      { terrain: 'castle', tiles: base.flat() },
+      { terrain: 'castle', tiles: overlay.flat() }
+    ],
     spawns,
     items,
     hazards: [
@@ -901,30 +953,78 @@ function createTimberTunnelsLevel(): LevelData {
 function createRiverHollowLevel(): LevelData {
   const width = 40;
   const height = 26;
-  const map: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 13));
+  const base: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => 13));
+  const overlay: number[][] = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
 
-  fillRect(map, 0, 0, width, 1, 18);
-  fillRect(map, 0, height - 1, width, 1, 18);
-  fillRect(map, 0, 0, 1, height, 18);
-  fillRect(map, width - 1, 0, 1, height, 18);
+  // Perimeter stones and carved-out basin.
+  fillRect(base, 0, 0, width, 1, 18);
+  fillRect(base, 0, height - 1, width, 1, 18);
+  fillRect(base, 0, 0, 1, height, 18);
+  fillRect(base, width - 1, 0, 1, height, 18);
+  fillRect(base, 2, 2, width - 4, height - 4, 14);
 
-  fillRect(map, 4, 4, width - 8, height - 8, 14);
-  fillRect(map, 6, 6, width - 12, 3, 25);
-  fillRect(map, 8, 10, width - 16, 4, 29);
-  fillRect(map, 10, 18, width - 20, 3, 25);
-  map[12][10] = 31;
-  map[12][width - 11] = 31;
-  map[20][Math.floor(width / 2)] = 31;
+  // Irregular river channels and chill pools.
+  fillRect(base, 5, 4, width - 10, 5, 25);
+  fillRect(base, 10, 9, width - 20, 5, 29);
+  fillRect(base, 8, 16, width - 16, 4, 25);
+  fillRect(base, 4, 14, 6, 3, 26);
+  fillRect(base, width - 12, 6, 5, 3, 26);
+
+  // Riverbanks, alcoves, and bridge decking.
+  fillRect(base, 6, 6, 6, 3, 18);
+  fillRect(base, width - 16, 12, 6, 3, 18);
+  drawVerticalPath(base, 14, 4, 20, 17);
+  drawVerticalPath(base, 24, 5, 18, 17);
+  drawHorizontalPath(base, 14, 6, 12, 17);
+  drawHorizontalPath(base, 20, 26, 33, 17);
+
+  // Columns and markers along the main flow.
+  base[7][18] = 30;
+  base[12][14] = 30;
+  base[12][24] = 30;
+  base[18][22] = 30;
+
+  // Warmth tiles beside braziers to match hazard tags.
+  base[11][9] = 31;
+  base[11][width - 10] = 31;
+  base[19][Math.floor(width / 2)] = 31;
+
+  // Decorative overlay for gravel edges, banners, and water shimmer.
+  for (let col = 4; col < width - 4; col += 3) {
+    overlay[3][col] = 15;
+    overlay[height - 4][col] = 15;
+  }
+  for (let row = 6; row < height - 6; row += 4) {
+    overlay[row][5] = 16;
+    overlay[row][width - 6] = 16;
+  }
+  const riverShore = [
+    { x: 5, y: 4, w: width - 10, h: 5 },
+    { x: 10, y: 9, w: width - 20, h: 5 },
+    { x: 8, y: 16, w: width - 16, h: 4 }
+  ];
+  riverShore.forEach(({ x, y, w, h }) => {
+    for (let row = y - 1; row <= y + h; row += 1) {
+      for (let col = x - 1; col <= x + w; col += 1) {
+        if (
+          overlay[row]?.[col] === -1 &&
+          ![25, 26, 29, 31].includes(base[row]?.[col] ?? -1)
+        ) {
+          overlay[row][col] = 14;
+        }
+      }
+    }
+  });
 
   const spawns: AgentSpawn[] = [
     {
       kind: 'enemy',
-      tileX: 10,
-      tileY: 7,
+      tileX: 9,
+      tileY: 6,
       waypoints: [
-        { tileX: 10, tileY: 7 },
-        { tileX: 18, tileY: 7 },
-        { tileX: 18, tileY: 9 }
+        { tileX: 9, tileY: 6 },
+        { tileX: 16, tileY: 6 },
+        { tileX: 16, tileY: 9 }
       ],
       tags: ['wisp'],
       attackDamage: 2,
@@ -933,12 +1033,12 @@ function createRiverHollowLevel(): LevelData {
     {
       kind: 'enemy',
       tileX: 22,
-      tileY: 12,
+      tileY: 11,
       tags: ['leech'],
       waypoints: [
-        { tileX: 22, tileY: 12 },
-        { tileX: 26, tileY: 12 },
-        { tileX: 26, tileY: 15 }
+        { tileX: 22, tileY: 11 },
+        { tileX: 26, tileY: 11 },
+        { tileX: 26, tileY: 14 }
       ],
       attackDamage: 2,
       speedTilesPerSecond: 4.5,
@@ -946,21 +1046,21 @@ function createRiverHollowLevel(): LevelData {
     },
     {
       kind: 'enemy',
-      tileX: 14,
-      tileY: 18,
+      tileX: 15,
+      tileY: 19,
       tags: ['bog'],
       waypoints: [
-        { tileX: 14, tileY: 18 },
-        { tileX: 12, tileY: 21 },
-        { tileX: 18, tileY: 21 }
+        { tileX: 15, tileY: 19 },
+        { tileX: 12, tileY: 22 },
+        { tileX: 20, tileY: 22 }
       ],
       attackDamage: 3,
       drops: ['coin']
     },
     {
       kind: 'enemy',
-      tileX: 28,
-      tileY: 20,
+      tileX: 30,
+      tileY: 15,
       tags: ['kelpie', 'boss'],
       health: 30,
       attackDamage: 5,
@@ -971,9 +1071,9 @@ function createRiverHollowLevel(): LevelData {
   ];
 
   const items: ItemSpawn[] = [
-    { itemId: 'spirit-charm', tileX: 11, tileY: 6 },
-    { itemId: 'warmth-salve', tileX: 20, tileY: 19 },
-    { itemId: 'river-etching', tileX: 30, tileY: 10 }
+    { itemId: 'spirit-charm', tileX: 10, tileY: 5 },
+    { itemId: 'warmth-salve', tileX: 20, tileY: 18 },
+    { itemId: 'river-etching', tileX: 30, tileY: 12 }
   ];
 
   return {
@@ -984,7 +1084,11 @@ function createRiverHollowLevel(): LevelData {
     width,
     height,
     terrain: 'castle',
-    tiles: map.flat(),
+    tiles: base.flat(),
+    layers: [
+      { terrain: 'castle', tiles: base.flat() },
+      { terrain: 'castle', tiles: overlay.flat() }
+    ],
     spawns,
     items,
     hazards: [
