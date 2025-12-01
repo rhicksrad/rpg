@@ -263,8 +263,8 @@ function createGrasslandLevel(): LevelData {
     { kind: 'npc', tileX: midCol + 14, tileY: midRow + 15, facing: 2, tags: ['merchant'], spriteIndex: 8 },
     {
       kind: 'npc',
-      tileX: midCol,
-      tileY: midRow - 5,
+      tileX: midCol - 2,
+      tileY: midRow + 2,
       facing: 0,
       spriteIndex: 12,
       tags: ['quest-giver', 'old-man']
